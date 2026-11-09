@@ -40,6 +40,28 @@ The workflow in `.github/workflows/pages.yml` publishes this folder. One-time se
 **Settings > Pages > Build and deployment > Source** and choose **GitHub Actions**. After the next push to `main`
 the builder is live at `https://mrbernardmah.github.io/intune-tools/`.
 
+### Standalone file
+
+`node remediation-builder/build.js` writes `remediation-builder/dist/index.html`: one self-contained file with the
+logic inlined. You can open it from disk or drop it on any static host. It also writes `dist/sitemap.xml`.
+`dist/` is committed and a test fails if it falls out of date, so rebuild after editing `index.html` or `builder.js`.
+
+### Get it found on Google
+
+The page already has a title, description, canonical URL, Open Graph tags, structured data and real text content
+for crawlers. Google only indexes a site once it has found it, and nothing can force or guarantee that, so do this
+once after Pages is live:
+
+1. Open [Google Search Console](https://search.google.com/search-console) and add a **URL prefix** property for
+   `https://mrbernardmah.github.io/intune-tools/`.
+2. Verify ownership with the **HTML tag** method: paste the `<meta name="google-site-verification" ...>` tag Google
+   gives you into the `<head>` of `index.html`, then run the build and push.
+3. Use **URL Inspection** on the page and click **Request indexing**, and submit `sitemap.xml` under **Sitemaps**.
+4. Expect days to weeks before it appears in results. Links from your repo README and other pages help.
+
+GitHub project sites cannot serve a root `robots.txt`, which is fine here because crawling is allowed by default.
+If you move to your own domain, update the canonical URL in `index.html` and rebuild.
+
 ## Develop
 
 No dependencies and no build step. Run the tests with Node 18+:

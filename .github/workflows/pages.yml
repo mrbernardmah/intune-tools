@@ -35,10 +35,14 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
-      - name: Stage site
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Build standalone site
         run: |
+          node remediation-builder/build.js
           mkdir _site
-          cp remediation-builder/index.html remediation-builder/builder.js _site/
+          cp remediation-builder/dist/index.html remediation-builder/dist/sitemap.xml _site/
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

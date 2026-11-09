@@ -3,7 +3,30 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Remediation Builder</title>
+<title>Intune Remediation Script Builder - Generate and Test with Claude</title>
+<meta name="description" content="Turn a plain-English description into Intune Remediation scripts. Claude writes the PowerShell detection and remediation pair, then lints and tests it.">
+<meta name="robots" content="index,follow,max-snippet:-1">
+<link rel="canonical" href="https://mrbernardmah.github.io/intune-tools/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Intune Remediation Script Builder">
+<meta property="og:description" content="Describe a problem in plain English and get Intune detection and remediation PowerShell scripts, linted and virtually tested by Claude.">
+<meta property="og:url" content="https://mrbernardmah.github.io/intune-tools/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Intune Remediation Script Builder">
+<meta name="twitter:description" content="Generate, lint and virtually test Intune Remediation scripts with Claude.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Intune Remediation Script Builder",
+  "url": "https://mrbernardmah.github.io/intune-tools/",
+  "description": "Generates Microsoft Intune Remediation detection and remediation PowerShell scripts from a plain-English description, then lints and virtually tests them with Claude.",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any (runs in a web browser)",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": { "@type": "Person", "name": "Bernard Mah" }
+}
+</script>
 <style>
   :root {
     --bg: #f6f7f9; --card: #ffffff; --text: #1b1f24; --muted: #5b6672; --line: #dfe3e8;
@@ -65,7 +88,7 @@
 </head>
 <body>
 <div class="wrap">
-  <h1>Remediation Builder</h1>
+  <h1>Intune Remediation Script Builder</h1>
   <p class="sub">Describe a problem in plain English. Claude writes the Intune detection and remediation scripts, lints them, then virtually tests them against scenarios and fixes what fails.</p>
 
   <div class="card">
@@ -162,7 +185,24 @@
     <div id="tab-checks" class="tabpane hidden"></div>
   </div>
 
-  <p class="note">Part of <a href="https://github.com/mrbernardmah/intune-tools">intune-tools</a>. Import the downloaded scripts in Intune admin center under Devices &gt; Scripts and remediations.</p>
+  <section class="card" id="about" aria-labelledby="aboutH">
+    <h2 id="aboutH" style="margin-top:0;font-size:18px">About this Intune Remediation script builder</h2>
+    <p>Intune Remediations (formerly Proactive Remediations) pair a <strong>detection script</strong> with a <strong>remediation script</strong>. Detection runs first and exits 0 when the device is healthy or 1 when something needs fixing; remediation then runs and Intune checks again with detection. This tool writes that pair for you from a plain-English description.</p>
+    <h3 style="font-size:15px">How it works</h3>
+    <ol>
+      <li><strong>Generate:</strong> Claude writes both PowerShell scripts following Intune's rules, plus test scenarios.</li>
+      <li><strong>Static checks:</strong> fixed rules flag interactive prompts, missing exit codes, detection scripts that change state, destructive deletes, hard-coded secrets and more.</li>
+      <li><strong>Virtual test:</strong> Claude steps through the scripts against each scenario, including the re-check after remediation, and fixes failures automatically.</li>
+      <li><strong>Download:</strong> copy or download both .ps1 files with the recommended run context and 64-bit setting.</li>
+    </ol>
+    <h3 style="font-size:15px">Frequently asked questions</h3>
+    <p><strong>Does it actually run my scripts?</strong> No. The virtual test is Claude reasoning through the code, not real execution. Review the scripts and pilot on a small device group before assigning them widely.</p>
+    <p><strong>Is it free?</strong> The page is free and runs entirely in your browser. You bring your own Anthropic API key, and Anthropic bills the small API usage to you.</p>
+    <p><strong>Where does my API key go?</strong> Requests go from your browser straight to api.anthropic.com. There is no backend, and the key is only stored if you tick the remember option.</p>
+    <p><strong>Where do I import the scripts?</strong> In the Intune admin center under Devices &gt; Scripts and remediations &gt; Remediations &gt; Create.</p>
+  </section>
+
+  <p class="note">Part of <a href="https://github.com/mrbernardmah/intune-tools">intune-tools</a> on GitHub. Not affiliated with or endorsed by Microsoft or Anthropic.</p>
 </div>
 
 <script src="builder.js"></script>

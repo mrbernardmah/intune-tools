@@ -1,0 +1,779 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Intune Remediation Script Builder - Generate and Test with Claude</title>
+<meta name="description" content="Turn a plain-English description into Intune Remediation scripts. Claude writes the PowerShell detection and remediation pair, then lints and tests it.">
+<meta name="robots" content="index,follow,max-snippet:-1">
+<link rel="canonical" href="https://mrbernardmah.github.io/intune-tools/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Intune Remediation Script Builder">
+<meta property="og:description" content="Describe a problem in plain English and get Intune detection and remediation PowerShell scripts, linted and virtually tested by Claude.">
+<meta property="og:url" content="https://mrbernardmah.github.io/intune-tools/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Intune Remediation Script Builder">
+<meta name="twitter:description" content="Generate, lint and virtually test Intune Remediation scripts with Claude.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Intune Remediation Script Builder",
+  "url": "https://mrbernardmah.github.io/intune-tools/",
+  "description": "Generates Microsoft Intune Remediation detection and remediation PowerShell scripts from a plain-English description, then lints and virtually tests them with Claude.",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Any (runs in a web browser)",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": { "@type": "Person", "name": "Bernard Mah" }
+}
+</script>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1b1f24; --muted: #5b6672; --line: #dfe3e8;
+    --accent: #0f6cbd; --accent-text: #ffffff; --ok: #1a7f37; --warn: #9a6700; --err: #cf222e;
+    --code-bg: #0f1720; --code-text: #e6edf3;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1116; --card: #161b22; --text: #e6edf3; --muted: #9aa5b1; --line: #2b323b;
+      --accent: #4493f8; --accent-text: #0e1116; --ok: #3fb950; --warn: #d29922; --err: #f85149;
+      --code-bg: #0b0f14; --code-text: #e6edf3;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  label { display: block; font-weight: 600; margin: 0 0 6px; font-size: 13px; }
+  textarea, input[type=password], input[type=text], select {
+    width: 100%; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--text); font: inherit;
+  }
+  textarea { min-height: 120px; resize: vertical; }
+  .row { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin-top: 12px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .chip { border: 1px solid var(--line); background: var(--bg); color: var(--text); border-radius: 999px; padding: 4px 12px; font-size: 13px; cursor: pointer; }
+  .chip:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: var(--accent-text); border: 0; border-radius: 8px; padding: 10px 18px; font: inherit; font-weight: 600; cursor: pointer; }
+  button.primary:disabled { opacity: .5; cursor: default; }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font: inherit; cursor: pointer; }
+  button.ghost:hover { border-color: var(--accent); }
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+  .banner { border-left: 4px solid var(--warn); padding: 8px 12px; background: var(--bg); border-radius: 4px; font-size: 13px; }
+  ol.steps { list-style: none; padding: 0; margin: 0; }
+  ol.steps li { padding: 5px 0; display: flex; gap: 8px; align-items: baseline; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--line); flex: none; position: relative; top: 1px; }
+  .dot.run { background: var(--accent); animation: pulse 1s infinite; }
+  .dot.ok { background: var(--ok); } .dot.bad { background: var(--err); }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; flex-wrap: wrap; }
+  .tab { background: none; border: 0; padding: 8px 14px; cursor: pointer; color: var(--muted); font: inherit; border-bottom: 2px solid transparent; }
+  .tab[aria-selected=true] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  pre { background: var(--code-bg); color: var(--code-text); padding: 14px; border-radius: 8px; overflow: auto; font: 13px/1.5 ui-monospace, Consolas, monospace; margin: 0; max-height: 520px; }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; align-items: center; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .badge.ok { background: color-mix(in srgb, var(--ok) 18%, transparent); color: var(--ok); }
+  .badge.bad { background: color-mix(in srgb, var(--err) 18%, transparent); color: var(--err); }
+  .badge.warn { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .hidden { display: none; }
+  .err-text { color: var(--err); }
+  ul.plain { margin: 6px 0 0; padding-left: 18px; }
+  .meta { display: flex; gap: 16px; flex-wrap: wrap; color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Intune Remediation Script Builder</h1>
+  <p class="sub">Describe a problem in plain English. Claude writes the Intune detection and remediation scripts, lints them, then virtually tests them against scenarios and fixes what fails.</p>
+
+  <div class="card">
+    <label for="request">What should be detected and fixed?</label>
+    <textarea id="request" placeholder="e.g. Make sure the Windows Update service is not disabled. If it is, set it to Manual and start it."></textarea>
+    <div class="chips" id="chips"></div>
+
+    <div class="row">
+      <div>
+        <label for="runAs">Run context</label>
+        <select id="runAs">
+          <option value="">Let Claude decide</option>
+          <option value="system">SYSTEM</option>
+          <option value="user">Signed-in user</option>
+        </select>
+      </div>
+      <div>
+        <label for="bits">PowerShell bitness</label>
+        <select id="bits">
+          <option value="">Let Claude decide</option>
+          <option value="64">64-bit</option>
+          <option value="32">32-bit</option>
+        </select>
+      </div>
+      <div>
+        <label for="model">Model</label>
+        <select id="model">
+          <option value="claude-sonnet-5-5">Claude Sonnet 5.5 (recommended)</option>
+          <option value="claude-opus-5-5">Claude Opus 5.5 (most thorough)</option>
+          <option value="claude-haiku-5-5">Claude Haiku 5.5 (fastest)</option>
+        </select>
+      </div>
+      <div>
+        <label for="rounds">Auto-fix rounds</label>
+        <select id="rounds">
+          <option value="0">0 (test only)</option>
+          <option value="1">1</option>
+          <option value="2" selected>2</option>
+          <option value="3">3</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="margin-top:12px">
+      <label for="notes">Extra constraints (optional)</label>
+      <input type="text" id="notes" placeholder="e.g. must not restart the device; log to C:\ProgramData\Contoso\Logs">
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="apiKey">Anthropic API key</label>
+        <input type="password" id="apiKey" placeholder="sk-ant-..." autocomplete="off">
+        <div class="note"><label style="display:inline;font-weight:400"><input type="checkbox" id="remember"> Remember in this browser</label></div>
+      </div>
+    </div>
+    <p class="note">Your key stays in your browser and is only sent to api.anthropic.com. Do not paste tenant secrets or real user data into the request.</p>
+
+    <div style="margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap">
+      <button class="primary" id="go">Generate and test</button>
+      <button class="ghost hidden" id="cancel">Cancel</button>
+      <span id="error" class="err-text"></span>
+    </div>
+  </div>
+
+  <div class="card hidden" id="progressCard">
+    <ol class="steps" id="steps"></ol>
+  </div>
+
+  <div class="card hidden" id="resultCard">
+    <div class="toolbar">
+      <strong id="rTitle"></strong>
+      <span id="rBadge"></span>
+    </div>
+    <div class="meta" id="rMeta"></div>
+    <p id="rSummary" style="margin-top:0"></p>
+    <div class="banner">The virtual test is Claude reasoning through your scripts, not real execution. Review the code and pilot on a small device group before assigning widely.</div>
+
+    <div class="tabs" role="tablist" style="margin-top:14px">
+      <button class="tab" role="tab" data-tab="detection" aria-selected="true">Detection</button>
+      <button class="tab" role="tab" data-tab="remediation" aria-selected="false">Remediation</button>
+      <button class="tab" role="tab" data-tab="tests" aria-selected="false">Virtual tests</button>
+      <button class="tab" role="tab" data-tab="checks" aria-selected="false">Static checks</button>
+    </div>
+
+    <div id="tab-detection" class="tabpane">
+      <div class="toolbar"><button class="ghost" data-copy="detection">Copy</button><button class="ghost" data-dl="detection">Download .ps1</button></div>
+      <pre id="codeDetection"></pre>
+    </div>
+    <div id="tab-remediation" class="tabpane hidden">
+      <div class="toolbar"><button class="ghost" data-copy="remediation">Copy</button><button class="ghost" data-dl="remediation">Download .ps1</button></div>
+      <pre id="codeRemediation"></pre>
+    </div>
+    <div id="tab-tests" class="tabpane hidden"></div>
+    <div id="tab-checks" class="tabpane hidden"></div>
+  </div>
+
+  <section class="card" id="about" aria-labelledby="aboutH">
+    <h2 id="aboutH" style="margin-top:0;font-size:18px">About this Intune Remediation script builder</h2>
+    <p>Intune Remediations (formerly Proactive Remediations) pair a <strong>detection script</strong> with a <strong>remediation script</strong>. Detection runs first and exits 0 when the device is healthy or 1 when something needs fixing; remediation then runs and Intune checks again with detection. This tool writes that pair for you from a plain-English description.</p>
+    <h3 style="font-size:15px">How it works</h3>
+    <ol>
+      <li><strong>Generate:</strong> Claude writes both PowerShell scripts following Intune's rules, plus test scenarios.</li>
+      <li><strong>Static checks:</strong> fixed rules flag interactive prompts, missing exit codes, detection scripts that change state, destructive deletes, hard-coded secrets and more.</li>
+      <li><strong>Virtual test:</strong> Claude steps through the scripts against each scenario, including the re-check after remediation, and fixes failures automatically.</li>
+      <li><strong>Download:</strong> copy or download both .ps1 files with the recommended run context and 64-bit setting.</li>
+    </ol>
+    <h3 style="font-size:15px">Frequently asked questions</h3>
+    <p><strong>Does it actually run my scripts?</strong> No. The virtual test is Claude reasoning through the code, not real execution. Review the scripts and pilot on a small device group before assigning them widely.</p>
+    <p><strong>Is it free?</strong> The page is free and runs entirely in your browser. You bring your own Anthropic API key, and Anthropic bills the small API usage to you.</p>
+    <p><strong>Where does my API key go?</strong> Requests go from your browser straight to api.anthropic.com. There is no backend, and the key is only stored if you tick the remember option.</p>
+    <p><strong>Where do I import the scripts?</strong> In the Intune admin center under Devices &gt; Scripts and remediations &gt; Remediations &gt; Create.</p>
+  </section>
+
+  <p class="note">Part of <a href="https://github.com/mrbernardmah/intune-tools">intune-tools</a> on GitHub. Not affiliated with or endorsed by Microsoft or Anthropic.</p>
+</div>
+
+<script>
+/*
+ * Remediation Builder - core logic.
+ * Works in the browser (window.RemediationBuilder) and in Node (module.exports) so it can be unit tested.
+ *
+ * Pipeline: describe -> Claude generates detection + remediation scripts -> static lint
+ *           -> Claude "virtual test" (simulated runs against scenarios) -> auto-fix loop -> final bundle.
+ *
+ * IMPORTANT: the virtual test is Claude reasoning about what the scripts would do. It is NOT real execution.
+ * Always pilot on a small device group before wide assignment.
+ */
+(function (root, factory) {
+  if (typeof module === 'object' && module.exports) module.exports = factory();
+  else root.RemediationBuilder = factory();
+})(typeof self !== 'undefined' ? self : this, function () {
+  'use strict';
+
+  var API_URL = 'https://api.anthropic.com/v1/messages';
+  var API_VERSION = '2023-06-01';
+  var MAX_SCRIPT_BYTES = 200 * 1024; // Intune script size limit
+
+  // ---------------------------------------------------------------------------
+  // Prompts
+  // ---------------------------------------------------------------------------
+
+  var INTUNE_RULES = [
+    'Microsoft Intune Remediations (Proactive Remediations) rules you MUST follow:',
+    '- A detection script and a remediation script are a pair. Detection runs first.',
+    '- Detection exit code 0 = compliant (remediation is NOT run). Exit code 1 = issue found (remediation runs).',
+    '- Detection must be strictly read-only: it must never change the device.',
+    '- Remediation must be idempotent, safe to re-run, and must exit 0 on success and 1 on failure.',
+    '- After remediation, Intune runs detection again to verify. The remediation must make detection return 0.',
+    '- Only the last line written to standard output is shown reliably in the Intune portal, and output is truncated at 2048 characters. Emit one concise status line using Write-Output.',
+    '- No interactive input of any kind (Read-Host, pause, Out-GridView, Get-Credential, message boxes).',
+    '- Scripts run non-interactively with a 30 minute timeout; keep them fast.',
+    '- Scripts may run as SYSTEM or as the signed-in user, and in 32-bit or 64-bit PowerShell (Windows PowerShell 5.1). Respect the requested context. As SYSTEM, HKCU and user profile paths do not point at the user; enumerate loaded user hives or profiles instead if needed.',
+    '- Wrap risky operations in try/catch, set $ErrorActionPreference = "Stop" where appropriate, and always finish with an explicit exit code.',
+    '- Never hard-code secrets, never download and execute remote code, never disable security controls, never run destructive wildcard deletes outside a narrowly scoped path.',
+    '- Do not restart or shut down the device unless the user explicitly asked for it.',
+    '- Keep each script under 200 KB. Add brief comments. Prefer built-in cmdlets and no extra module dependencies.'
+  ].join('\n');
+
+  var GENERATE_SYSTEM = [
+    'You are a senior Microsoft Intune / Windows endpoint engineer who writes production-grade Intune Remediation script pairs in Windows PowerShell 5.1.',
+    INTUNE_RULES,
+    '',
+    'Respond with ONE JSON object and nothing else (no markdown fences, no commentary). Schema:',
+    '{',
+    '  "title": string,                       // short name, e.g. "Clear Teams cache"',
+    '  "summary": string,                     // 1-3 sentences: what is detected and what is fixed',
+    '  "runAs": "system" | "user",            // recommended Intune run context',
+    '  "run64Bit": boolean,                   // recommended "Run script in 64-bit PowerShell"',
+    '  "detection": string,                   // full detection.ps1 contents',
+    '  "remediation": string,                 // full remediation.ps1 contents',
+    '  "assumptions": string[],               // anything you assumed because the request was ambiguous',
+    '  "scenarios": [                         // 4-6 virtual test scenarios the pair must handle',
+    '    { "name": string, "deviceState": string, "expectedDetectionExit": 0 | 1,',
+    '      "expectedDetectionOutput": string, "expectedRemediation": string }',
+    '  ]',
+    '}',
+    'Scenarios must include: a compliant device, a non-compliant device that remediation can fix, a device where the target feature or path does not exist at all, and one failure case (for example access denied or service missing).'
+  ].join('\n');
+
+  var TEST_SYSTEM = [
+    'You are a meticulous PowerShell reviewer acting as a virtual test harness for Intune Remediation scripts.',
+    'You cannot execute code. Instead, mentally execute the scripts line by line against each scenario, as Windows PowerShell 5.1 would on a Windows 11 device, in the stated run context.',
+    'Be strict and honest: report real syntax errors, wrong cmdlet names or parameters, wrong registry/WMI/CIM paths, StrictMode/null problems, wrong exit codes, output longer than 2048 characters, detection that modifies state, remediation that does not make detection pass afterwards, SYSTEM-vs-user context mistakes, and anything unsafe.',
+    'For each scenario simulate: (1) detection trace, exit code and output; (2) if exit code is 1, remediation trace, exit code and output; (3) detection run again after remediation. Mark passed only if actual behaviour matches the scenario expectation and Intune semantics.',
+    'Respond with ONE JSON object and nothing else. Schema:',
+    '{',
+    '  "verdict": "pass" | "fail",',
+    '  "summary": string,',
+    '  "results": [ { "scenario": string, "detectionExit": number, "detectionOutput": string,',
+    '                 "remediationExit": number | null, "remediationOutput": string | null,',
+    '                 "postRemediationDetectionExit": number | null, "passed": boolean, "notes": string } ],',
+    '  "issues": [ { "severity": "error" | "warning", "script": "detection" | "remediation", "line": number | null,',
+    '                "problem": string, "fix": string } ]',
+    '}',
+    'verdict is "fail" if any scenario fails or any issue has severity "error".'
+  ].join('\n');
+
+  var FIX_SYSTEM = [
+    'You are a senior Microsoft Intune / Windows endpoint engineer fixing Intune Remediation scripts after review.',
+    INTUNE_RULES,
+    'You will receive the current scripts, deterministic lint findings and a virtual test report. Fix every error and every failed scenario with the smallest sensible change; keep behaviour that already works.',
+    'Respond with ONE JSON object and nothing else, using the same schema as the original generation (title, summary, runAs, run64Bit, detection, remediation, assumptions, scenarios). Update scenarios only if they were wrong.'
+  ].join('\n');
+
+  function describeOptions(opts) {
+    opts = opts || {};
+    var lines = [];
+    lines.push('Run context: ' + (opts.runAs === 'user' ? 'signed-in user' : opts.runAs === 'system' ? 'SYSTEM' : 'choose the best fit and justify in assumptions'));
+    lines.push('64-bit PowerShell: ' + (opts.run64Bit === false ? 'no (32-bit)' : opts.run64Bit === true ? 'yes' : 'choose the best fit'));
+    if (opts.notes) lines.push('Extra constraints from the engineer: ' + String(opts.notes).trim());
+    return lines.join('\n');
+  }
+
+  function buildGeneratePrompt(input, opts) {
+    return [
+      'Create an Intune Remediation script pair for this request.',
+      '',
+      'REQUEST:',
+      String(input || '').trim(),
+      '',
+      describeOptions(opts)
+    ].join('\n');
+  }
+
+  function buildTestPrompt(bundle, opts) {
+    return [
+      'Virtually test this Intune Remediation pair.',
+      '',
+      describeOptions({ runAs: bundle.runAs, run64Bit: bundle.run64Bit, notes: opts && opts.notes }),
+      '',
+      'SCENARIOS (you may add more if you spot gaps):',
+      JSON.stringify(bundle.scenarios || [], null, 2),
+      '',
+      '=== detection.ps1 ===',
+      numberLines(bundle.detection),
+      '',
+      '=== remediation.ps1 ===',
+      numberLines(bundle.remediation)
+    ].join('\n');
+  }
+
+  function buildFixPrompt(bundle, lintFindings, testReport, input) {
+    return [
+      'ORIGINAL REQUEST:',
+      String(input || '').trim(),
+      '',
+      'CURRENT BUNDLE (JSON):',
+      JSON.stringify(bundle, null, 2),
+      '',
+      'DETERMINISTIC LINT FINDINGS:',
+      JSON.stringify(lintFindings, null, 2),
+      '',
+      'VIRTUAL TEST REPORT:',
+      JSON.stringify(testReport, null, 2),
+      '',
+      'Return the corrected bundle JSON.'
+    ].join('\n');
+  }
+
+  function numberLines(code) {
+    return String(code || '').split(/\r?\n/).map(function (l, i) { return (i + 1) + ': ' + l; }).join('\n');
+  }
+
+  // ---------------------------------------------------------------------------
+  // JSON extraction / bundle validation
+  // ---------------------------------------------------------------------------
+
+  function extractJson(text) {
+    if (typeof text !== 'string') throw new Error('Model returned no text.');
+    var t = text.trim();
+    var fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (fence) t = fence[1].trim();
+    try { return JSON.parse(t); } catch (e) { /* fall through to brace scan */ }
+    var start = t.indexOf('{');
+    if (start < 0) throw new Error('No JSON object found in model output.');
+    var depth = 0, inStr = false, esc = false;
+    for (var i = start; i < t.length; i++) {
+      var c = t[i];
+      if (inStr) {
+        if (esc) esc = false;
+        else if (c === '\\') esc = true;
+        else if (c === '"') inStr = false;
+      } else if (c === '"') inStr = true;
+      else if (c === '{') depth++;
+      else if (c === '}') {
+        depth--;
+        if (depth === 0) return JSON.parse(t.slice(start, i + 1));
+      }
+    }
+    throw new Error('Unterminated JSON object in model output (response may have been cut off).');
+  }
+
+  function normaliseBundle(b) {
+    if (!b || typeof b !== 'object') throw new Error('Bundle is not an object.');
+    if (typeof b.detection !== 'string' || !b.detection.trim()) throw new Error('Bundle is missing the detection script.');
+    if (typeof b.remediation !== 'string' || !b.remediation.trim()) throw new Error('Bundle is missing the remediation script.');
+    return {
+      title: String(b.title || 'Untitled remediation'),
+      summary: String(b.summary || ''),
+      runAs: b.runAs === 'user' ? 'user' : 'system',
+      run64Bit: b.run64Bit !== false,
+      detection: b.detection.replace(/\r?\n/g, '\r\n'),
+      remediation: b.remediation.replace(/\r?\n/g, '\r\n'),
+      assumptions: Array.isArray(b.assumptions) ? b.assumptions.map(String) : [],
+      scenarios: Array.isArray(b.scenarios) ? b.scenarios : []
+    };
+  }
+
+  function normaliseTestReport(r) {
+    if (!r || typeof r !== 'object') throw new Error('Test report is not an object.');
+    var issues = Array.isArray(r.issues) ? r.issues : [];
+    var results = Array.isArray(r.results) ? r.results : [];
+    var failedScenario = results.some(function (x) { return x && x.passed === false; });
+    var hasError = issues.some(function (x) { return x && x.severity === 'error'; });
+    // Never trust a "pass" verdict that contradicts the detail.
+    var verdict = (r.verdict === 'pass' && !failedScenario && !hasError) ? 'pass' : 'fail';
+    return { verdict: verdict, summary: String(r.summary || ''), results: results, issues: issues };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Deterministic static lint (no AI involved)
+  // ---------------------------------------------------------------------------
+
+  function maskBlockComments(code) {
+    return code.replace(/<#[\s\S]*?#>/g, function (m) { return m.replace(/[^\r\n]/g, ' '); });
+  }
+
+  function lintScript(kind, code) {
+    var findings = [];
+    var text = String(code || '');
+    var masked = maskBlockComments(text);
+    var lines = masked.split(/\r?\n/);
+
+    function add(sev, rule, msg, line) { findings.push({ severity: sev, script: kind, rule: rule, line: line || null, message: msg }); }
+    function scan(re, sev, rule, msg) {
+      for (var i = 0; i < lines.length; i++) {
+        var ln = lines[i];
+        if (/^\s*#/.test(ln)) continue;
+        if (re.test(ln)) add(sev, rule, msg, i + 1);
+      }
+    }
+
+    if (Buffer_byteLength(text) > MAX_SCRIPT_BYTES) add('error', 'size', 'Script is larger than the 200 KB Intune limit.');
+
+    scan(/\b(Read-Host|Out-GridView|Get-Credential|\$Host\.UI\.Prompt|\[Console\]::ReadKey|\[System\.Windows\.Forms\.MessageBox\]|\bpause\b)/i,
+      'error', 'interactive', 'Interactive input or UI is not allowed in Remediations.');
+    scan(/\b(Invoke-Expression|iex)\b/i, 'warning', 'invoke-expression', 'Avoid Invoke-Expression; it hides intent and is flagged by security tooling.');
+    scan(/(DownloadString|DownloadFile|Invoke-WebRequest|Invoke-RestMethod|Start-BitsTransfer)[\s\S]*\b(iex|Invoke-Expression)\b/i,
+      'error', 'remote-exec', 'Downloading and executing remote code is not allowed.');
+    scan(/(password|passwd|pwd|secret|apikey|api_key|token)\s*=\s*['"][^'"\s]{4,}['"]/i,
+      'error', 'hardcoded-secret', 'Possible hard-coded secret.');
+    scan(/\b(Format-Volume|Clear-Disk|Remove-Partition|Initialize-Disk)\b/i, 'error', 'destructive-disk', 'Disk-destroying cmdlet detected.');
+    scan(/Remove-Item[^\n]*-Recurse[^\n]*['"]?[A-Za-z]:\\['"]?\s*($|[-|;)])/i, 'error', 'destructive-delete', 'Recursive delete at a drive root.');
+    scan(/Set-MpPreference[^\n]*-Disable\w+\s+\$true/i, 'error', 'disable-security', 'Disabling Defender protections is not allowed.');
+    scan(/\b(Restart-Computer|Stop-Computer)\b|\bshutdown(\.exe)?\s+\//i, 'warning', 'reboot', 'Restarts or shutdowns should only happen if explicitly requested.');
+    scan(/Start-Sleep\s+(-Seconds\s+)?([3-9]\d{2}|\d{4,})\b/i, 'warning', 'long-sleep', 'Long sleep; Remediations time out after 30 minutes.');
+    scan(/\bWrite-Host\b/i, 'warning', 'write-host', 'Use Write-Output so the status line reaches the Intune portal reliably.');
+    scan(/-Confirm\s*(:\s*\$true)?\b(?!\s*:\s*\$false)/i, 'warning', 'confirm-prompt', 'A -Confirm prompt would hang a non-interactive run.');
+
+    var body = lines.filter(function (l) { return !/^\s*#/.test(l); }).join('\n');
+
+    if (!/\bexit\s+\d+|\bexit\s+\$/i.test(body)) add('error', 'no-exit', 'No explicit exit code. Intune relies on exit codes.');
+    if (!/\bWrite-Output\b/i.test(body)) add('warning', 'no-output', 'No Write-Output, so the portal will show no status text.');
+
+    var exitCodes = [];
+    var re = /\bexit\s+(\d+)/gi, m;
+    while ((m = re.exec(body)) !== null) exitCodes.push(parseInt(m[1], 10));
+    exitCodes.forEach(function (c) {
+      if (c !== 0 && c !== 1) add('warning', 'exit-code', 'Exit code ' + c + ' used; Intune only distinguishes 0 (ok) and non-zero.');
+    });
+
+    if (kind === 'detection') {
+      if (exitCodes.length && exitCodes.indexOf(0) < 0) add('error', 'detection-no-compliant-path', 'Detection never exits 0, so it can never report compliant.');
+      if (exitCodes.length && exitCodes.indexOf(1) < 0) add('error', 'detection-no-issue-path', 'Detection never exits 1, so remediation can never run.');
+      scan(/\b(Set-ItemProperty|New-ItemProperty|Remove-ItemProperty|Remove-Item|New-Item|Set-Service|Stop-Service|Start-Service|Set-Content|Add-Content|Out-File|Stop-Process|Start-Process|Install-\w+|Uninstall-\w+|Set-MpPreference|Enable-\w+|Disable-\w+)\b/i,
+        'warning', 'detection-writes', 'Detection should be read-only; this looks like it changes state.');
+    }
+
+    if (kind === 'remediation') {
+      if (!/\btry\s*\{/i.test(body)) add('warning', 'no-try-catch', 'No try/catch around changes; failures may go unreported.');
+      if (exitCodes.length && exitCodes.indexOf(0) < 0) add('warning', 'remediation-no-success-path', 'Remediation never exits 0.');
+    }
+
+    return findings;
+  }
+
+  function Buffer_byteLength(s) {
+    if (typeof Buffer !== 'undefined') return Buffer.byteLength(s, 'utf8');
+    return new Blob([s]).size;
+  }
+
+  function lintBundle(bundle) {
+    return lintScript('detection', bundle.detection).concat(lintScript('remediation', bundle.remediation));
+  }
+
+  function hasErrors(findings) {
+    return findings.some(function (f) { return f.severity === 'error'; });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Claude API
+  // ---------------------------------------------------------------------------
+
+  function callClaude(o) {
+    var f = o.fetchImpl || (typeof fetch !== 'undefined' ? fetch.bind(globalThis) : null);
+    if (!f) return Promise.reject(new Error('fetch is not available.'));
+    if (!o.apiKey) return Promise.reject(new Error('Enter your Anthropic API key first.'));
+    var body = {
+      model: o.model,
+      max_tokens: o.maxTokens || 8000,
+      system: o.system,
+      messages: [{ role: 'user', content: o.user }]
+    };
+    return f(API_URL, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': o.apiKey,
+        'anthropic-version': API_VERSION,
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify(body),
+      signal: o.signal
+    }).then(function (res) {
+      return res.text().then(function (txt) {
+        var data;
+        try { data = JSON.parse(txt); } catch (e) { data = null; }
+        if (!res.ok) {
+          var msg = (data && data.error && data.error.message) || txt.slice(0, 300) || ('HTTP ' + res.status);
+          throw new Error('Claude API error (' + res.status + '): ' + msg);
+        }
+        if (!data || !Array.isArray(data.content)) throw new Error('Unexpected API response.');
+        if (data.stop_reason === 'max_tokens') throw new Error('Claude hit the output limit before finishing. Shorten the request and try again.');
+        return data.content.filter(function (b) { return b.type === 'text'; }).map(function (b) { return b.text; }).join('');
+      });
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // Pipeline
+  // ---------------------------------------------------------------------------
+
+  function runPipeline(o) {
+    var input = String(o.input || '').trim();
+    if (!input) return Promise.reject(new Error('Describe what you want to detect and remediate.'));
+    var maxRounds = typeof o.maxFixRounds === 'number' ? o.maxFixRounds : 2;
+    var progress = o.onProgress || function () {};
+    var claude = function (system, user) {
+      return callClaude({ apiKey: o.apiKey, model: o.model, system: system, user: user, fetchImpl: o.fetchImpl, signal: o.signal, maxTokens: o.maxTokens });
+    };
+    var history = [];
+
+    progress({ step: 'generate', message: 'Generating detection and remediation scripts...' });
+    return claude(GENERATE_SYSTEM, buildGeneratePrompt(input, o.options)).then(function (txt) {
+      var bundle = normaliseBundle(extractJson(txt));
+      return loop(bundle, 0);
+    });
+
+    function loop(bundle, round) {
+      var lint = lintBundle(bundle);
+      progress({ step: 'lint', round: round, message: 'Static checks: ' + countBy(lint, 'error') + ' error(s), ' + countBy(lint, 'warning') + ' warning(s).', findings: lint });
+      progress({ step: 'test', round: round, message: 'Virtual test ' + (round ? '(re-test ' + round + ')' : '') + ' running scenarios...' });
+      return claude(TEST_SYSTEM, buildTestPrompt(bundle, o.options)).then(function (txt) {
+        var report = normaliseTestReport(extractJson(txt));
+        history.push({ round: round, lint: lint, report: report });
+        var ok = report.verdict === 'pass' && !hasErrors(lint);
+        progress({ step: 'result', round: round, message: ok ? 'All scenarios passed.' : 'Issues found.', report: report });
+        if (ok || round >= maxRounds) {
+          return { bundle: bundle, lint: lint, report: report, passed: ok, rounds: round, history: history };
+        }
+        progress({ step: 'fix', round: round + 1, message: 'Fixing issues (round ' + (round + 1) + ' of ' + maxRounds + ')...' });
+        return claude(FIX_SYSTEM, buildFixPrompt(bundle, lint, report, input)).then(function (fixTxt) {
+          var fixed = normaliseBundle(extractJson(fixTxt));
+          return loop(fixed, round + 1);
+        });
+      });
+    }
+  }
+
+  function countBy(findings, sev) {
+    return findings.filter(function (f) { return f.severity === sev; }).length;
+  }
+
+  function safeFileName(title) {
+    return String(title || 'remediation').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60) || 'remediation';
+  }
+
+  return {
+    API_URL: API_URL,
+    GENERATE_SYSTEM: GENERATE_SYSTEM,
+    TEST_SYSTEM: TEST_SYSTEM,
+    FIX_SYSTEM: FIX_SYSTEM,
+    buildGeneratePrompt: buildGeneratePrompt,
+    buildTestPrompt: buildTestPrompt,
+    buildFixPrompt: buildFixPrompt,
+    extractJson: extractJson,
+    normaliseBundle: normaliseBundle,
+    normaliseTestReport: normaliseTestReport,
+    lintScript: lintScript,
+    lintBundle: lintBundle,
+    hasErrors: hasErrors,
+    callClaude: callClaude,
+    runPipeline: runPipeline,
+    safeFileName: safeFileName
+  };
+});
+
+</script>
+<script>
+(function () {
+  var RB = window.RemediationBuilder;
+  var $ = function (id) { return document.getElementById(id); };
+  var current = null, abortCtl = null;
+
+  var EXAMPLES = [
+    ['Windows Update service', 'Make sure the Windows Update (wuauserv) service is not disabled. If it is, set it to Manual and start it.'],
+    ['Teams cache', 'Detect if the new Teams cache folder is larger than 1 GB for the signed-in user. If so, clear it.'],
+    ['BitLocker', 'Detect if BitLocker is not enabled on the C: drive. If so, report it but do not change anything risky; try to enable it only if a TPM is present.'],
+    ['Stale temp files', 'Detect if C:\\Windows\\Temp holds more than 5 GB of files older than 14 days. If so, delete only those old files.'],
+    ['Disk space', 'Detect if free space on C: is below 15 percent and clear the Windows Update download cache to recover space.']
+  ];
+  EXAMPLES.forEach(function (e) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.textContent = e[0];
+    b.addEventListener('click', function () { $('request').value = e[1]; $('request').focus(); });
+    $('chips').appendChild(b);
+  });
+
+  try {
+    var saved = localStorage.getItem('rb_api_key');
+    if (saved) { $('apiKey').value = saved; $('remember').checked = true; }
+  } catch (e) {}
+
+  function setSteps(list) {
+    var ol = $('steps'); ol.textContent = '';
+    list.forEach(function (s) {
+      var li = document.createElement('li');
+      var d = document.createElement('span'); d.className = 'dot ' + (s.state || '');
+      var t = document.createElement('span'); t.textContent = s.message;
+      li.appendChild(d); li.appendChild(t); ol.appendChild(li);
+    });
+  }
+
+  var stepList = [];
+  function onProgress(p) {
+    stepList.forEach(function (s) { if (s.state === 'run') s.state = 'ok'; });
+    var state = 'run';
+    if (p.step === 'result') state = p.report && p.report.verdict === 'pass' ? 'ok' : 'bad';
+    stepList.push({ message: p.message, state: state });
+    setSteps(stepList);
+  }
+
+  $('go').addEventListener('click', function () {
+    $('error').textContent = '';
+    var key = $('apiKey').value.trim();
+    try {
+      if ($('remember').checked && key) localStorage.setItem('rb_api_key', key); else localStorage.removeItem('rb_api_key');
+    } catch (e) {}
+    var runAs = $('runAs').value, bits = $('bits').value;
+    var options = {
+      runAs: runAs || undefined,
+      run64Bit: bits === '64' ? true : bits === '32' ? false : undefined,
+      notes: $('notes').value
+    };
+    stepList = []; setSteps(stepList);
+    $('progressCard').classList.remove('hidden');
+    $('resultCard').classList.add('hidden');
+    $('go').disabled = true; $('cancel').classList.remove('hidden');
+    abortCtl = new AbortController();
+
+    RB.runPipeline({
+      input: $('request').value, apiKey: key, model: $('model').value, options: options,
+      maxFixRounds: parseInt($('rounds').value, 10), onProgress: onProgress, signal: abortCtl.signal
+    }).then(function (res) {
+      stepList.forEach(function (s) { if (s.state === 'run') s.state = 'ok'; });
+      setSteps(stepList);
+      current = res; render(res);
+    }).catch(function (err) {
+      $('error').textContent = err && err.name === 'AbortError' ? 'Cancelled.' : (err && err.message) || String(err);
+      stepList.forEach(function (s) { if (s.state === 'run') s.state = 'bad'; });
+      setSteps(stepList);
+    }).then(function () {
+      $('go').disabled = false; $('cancel').classList.add('hidden'); abortCtl = null;
+    });
+  });
+
+  $('cancel').addEventListener('click', function () { if (abortCtl) abortCtl.abort(); });
+
+  function el(tag, text, cls) {
+    var e = document.createElement(tag);
+    if (text !== undefined && text !== null) e.textContent = text;
+    if (cls) e.className = cls;
+    return e;
+  }
+
+  function render(res) {
+    var b = res.bundle;
+    $('resultCard').classList.remove('hidden');
+    $('rTitle').textContent = b.title;
+    var badge = $('rBadge'); badge.textContent = '';
+    var bd = el('span', res.passed ? 'Virtual tests passed' : 'Needs review', 'badge ' + (res.passed ? 'ok' : 'bad'));
+    badge.appendChild(bd);
+    if (res.rounds) badge.appendChild(el('span', ' ' + res.rounds + ' auto-fix round' + (res.rounds > 1 ? 's' : ''), 'note'));
+    $('rSummary').textContent = b.summary;
+
+    var meta = $('rMeta'); meta.textContent = '';
+    meta.appendChild(el('span', 'Run as: ' + (b.runAs === 'user' ? 'signed-in user' : 'SYSTEM')));
+    meta.appendChild(el('span', 'Run in 64-bit PowerShell: ' + (b.run64Bit ? 'Yes' : 'No')));
+    meta.appendChild(el('span', 'Signature check: No'));
+
+    $('codeDetection').textContent = b.detection;
+    $('codeRemediation').textContent = b.remediation;
+
+    // Tests tab
+    var t = $('tab-tests'); t.textContent = '';
+    t.appendChild(el('p', res.report.summary));
+    var tbl = el('table'); var thead = el('thead'); var hr = el('tr');
+    ['Scenario', 'Detection', 'Remediation', 'Re-check', 'Result'].forEach(function (h) { hr.appendChild(el('th', h)); });
+    thead.appendChild(hr); tbl.appendChild(thead);
+    var tbody = el('tbody');
+    res.report.results.forEach(function (r) {
+      var tr = el('tr');
+      var c1 = el('td'); c1.appendChild(el('div', r.scenario)); if (r.notes) c1.appendChild(el('div', r.notes, 'note'));
+      var c2 = el('td', 'exit ' + r.detectionExit + (r.detectionOutput ? ': ' + r.detectionOutput : ''));
+      var c3 = el('td', r.remediationExit === null || r.remediationExit === undefined ? 'not run' : 'exit ' + r.remediationExit + (r.remediationOutput ? ': ' + r.remediationOutput : ''));
+      var c4 = el('td', r.postRemediationDetectionExit === null || r.postRemediationDetectionExit === undefined ? '-' : 'exit ' + r.postRemediationDetectionExit);
+      var c5 = el('td'); c5.appendChild(el('span', r.passed ? 'Pass' : 'Fail', 'badge ' + (r.passed ? 'ok' : 'bad')));
+      [c1, c2, c3, c4, c5].forEach(function (c) { tr.appendChild(c); });
+      tbody.appendChild(tr);
+    });
+    tbl.appendChild(tbody); t.appendChild(tbl);
+    if (res.report.issues.length) {
+      t.appendChild(el('h3', 'Reviewer issues'));
+      var ul = el('ul', null, 'plain');
+      res.report.issues.forEach(function (i) {
+        ul.appendChild(el('li', '[' + i.severity + '] ' + i.script + (i.line ? ' line ' + i.line : '') + ': ' + i.problem + (i.fix ? ' Fix: ' + i.fix : '')));
+      });
+      t.appendChild(ul);
+    }
+    if (b.assumptions.length) {
+      t.appendChild(el('h3', 'Assumptions'));
+      var ua = el('ul', null, 'plain');
+      b.assumptions.forEach(function (a) { ua.appendChild(el('li', a)); });
+      t.appendChild(ua);
+    }
+
+    // Static checks tab
+    var c = $('tab-checks'); c.textContent = '';
+    if (!res.lint.length) c.appendChild(el('p', 'No static issues found.'));
+    else {
+      var cu = el('ul', null, 'plain');
+      res.lint.forEach(function (f) {
+        cu.appendChild(el('li', '[' + f.severity + '] ' + f.script + (f.line ? ' line ' + f.line : '') + ': ' + f.message));
+      });
+      c.appendChild(cu);
+    }
+  }
+
+  document.querySelectorAll('.tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.tab').forEach(function (x) { x.setAttribute('aria-selected', x === tab ? 'true' : 'false'); });
+      document.querySelectorAll('.tabpane').forEach(function (p) { p.classList.add('hidden'); });
+      $('tab-' + tab.dataset.tab).classList.remove('hidden');
+    });
+  });
+
+  document.addEventListener('click', function (ev) {
+    var t = ev.target;
+    if (!current) return;
+    if (t.dataset && t.dataset.copy) {
+      var text = current.bundle[t.dataset.copy];
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(function () { var o = t.textContent; t.textContent = 'Copied'; setTimeout(function () { t.textContent = o; }, 1200); });
+    }
+    if (t.dataset && t.dataset.dl) {
+      var kind = t.dataset.dl;
+      // UTF-8 with BOM so Windows PowerShell 5.1 reads non-ASCII text correctly.
+      var blob = new Blob(['\ufeff' + current.bundle[kind]], { type: 'text/plain;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = RB.safeFileName(current.bundle.title) + '-' + kind + '.ps1';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    }
+  });
+})();
+</script>
+</body>
+</html>
