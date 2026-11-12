@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Windows Update Error Remediation Builder for Intune</title>
+<meta name="description" content="Pick Windows Update error codes and get matching Intune Remediation detection and remediation PowerShell scripts. Runs in your browser, no sign-in.">
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1b1f24; --muted: #5b6672; --line: #dfe3e8;
+    --accent: #0f6cbd; --accent-text: #ffffff; --ok: #1a7f37; --warn: #9a6700; --err: #cf222e;
+    --code-bg: #0f1720; --code-text: #e6edf3; --row-sel: #e8f1fb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1116; --card: #161b22; --text: #e6edf3; --muted: #9aa5b1; --line: #2b323b;
+      --accent: #4493f8; --accent-text: #0e1116; --ok: #3fb950; --warn: #d29922; --err: #f85149;
+      --code-bg: #0b0f14; --code-text: #e6edf3; --row-sel: #15253a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0 0 10px; }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  a { color: var(--accent); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  label { font-size: 13px; }
+  .field > label { display: block; font-weight: 600; margin: 0 0 6px; }
+  input[type=text], input[type=number], select {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--text); font: inherit;
+  }
+  .row { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .filters { display: grid; gap: 10px; grid-template-columns: 2fr 1fr 1fr; margin-bottom: 10px; }
+  @media (max-width: 700px) {
+    .filters { grid-template-columns: 1fr; }
+    thead th:nth-child(3), td.name { display: none; }
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; align-items: center; }
+  .chip { display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--line); background: var(--bg); color: var(--text);
+    border-radius: 999px; padding: 2px 6px 2px 10px; font: 13px ui-monospace, Consolas, monospace; }
+  .chip button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
+  .chip button:hover { color: var(--err); }
+  .chip.unknown { border-style: dashed; }
+  button.primary { background: var(--accent); color: var(--accent-text); border: 0; border-radius: 8px; padding: 8px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+  button.primary:disabled { opacity: .5; cursor: default; }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font: inherit; cursor: pointer; }
+  button.ghost:hover { border-color: var(--accent); }
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  .banner { border-left: 4px solid var(--warn); padding: 8px 12px; background: var(--bg); border-radius: 4px; font-size: 13px; margin-top: 12px; }
+  .tablewrap { max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { position: sticky; top: 0; background: var(--card); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); z-index: 1; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--bg); }
+  tbody tr.sel { background: var(--row-sel); }
+  td.code { font-family: ui-monospace, Consolas, monospace; white-space: nowrap; }
+  td.name { font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-all; color: var(--muted); }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; margin: 1px 2px 1px 0; border: 1px solid var(--line); white-space: nowrap; }
+  .tag.info { color: var(--muted); }
+  .tag.fix { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+  .count { color: var(--muted); font-size: 13px; }
+  .pb { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .pb.off { opacity: .6; }
+  .pb-head { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+  .pb-head small { font-weight: 400; color: var(--muted); }
+  .pb p { margin: 4px 0 0 24px; font-size: 13px; }
+  .pb .risk { color: var(--warn); }
+  .pb .opts { margin: 6px 0 0 24px; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; }
+  .pb .opts input[type=number] { width: 80px; padding: 3px 6px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; flex-wrap: wrap; }
+  .tab { background: none; border: 0; padding: 8px 14px; cursor: pointer; color: var(--muted); font: inherit; border-bottom: 2px solid transparent; }
+  .tab[aria-selected=true] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  pre { background: var(--code-bg); color: var(--code-text); padding: 14px; border-radius: 8px; overflow: auto; font: 12.5px/1.5 ui-monospace, Consolas, monospace; margin: 0; max-height: 560px; }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; align-items: center; }
+  .toolbar .fname { font: 13px ui-monospace, Consolas, monospace; color: var(--muted); margin-right: auto; }
+  .empty { color: var(--muted); padding: 30px; text-align: center; border: 1px dashed var(--line); border-radius: 8px; }
+  .steps li { margin-bottom: 6px; }
+  .kv td:first-child { color: var(--muted); width: 45%; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Windows Update Error Remediation Builder</h1>
+  <p class="sub">Pick the Windows Update error codes your devices report and get an Intune Remediation pair:
+    a read-only <b>detection</b> script and a matching <b>remediation</b> script. Everything runs in this page; nothing is sent anywhere.
+    Codes come from Microsoft's <a id="srcLink" target="_blank" rel="noopener">Windows Update error reference</a>.</p>
+
+  <section class="card" aria-labelledby="h-pick">
+    <h2 id="h-pick">1. Pick error codes</h2>
+    <div class="filters">
+      <div class="field"><label for="q">Search code, name or description</label>
+        <input id="q" type="text" placeholder="0x80070422, 8024402C, -2147023838, proxy, BITS..." autocomplete="off"></div>
+      <div class="field"><label for="comp">Component</label><select id="comp"><option value="">All components</option></select></div>
+      <div class="field"><label for="pbFilter">Fix type</label><select id="pbFilter"><option value="">All fix types</option></select></div>
+    </div>
+    <div class="toolbar">
+      <span class="count" id="count"></span>
+      <span style="margin-left:auto"></span>
+      <button class="ghost" id="addCustom" hidden>Add <span id="customCode"></span> (not in reference)</button>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th style="width:28px"></th><th>Code</th><th>Name</th><th>Description</th><th>Fix</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px">
+      <div class="field"><label>Selected <span class="count" id="selCount"></span></label></div>
+      <div class="chips" id="selected"></div>
+      <div class="toolbar" style="margin-top:6px"><button class="ghost" id="clearSel">Clear selection</button>
+        <span class="note">Tip: select several related codes to cover them with one package. The page URL keeps your selection so you can share it.</span></div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="h-plan">
+    <h2 id="h-plan">2. Fix plan and options</h2>
+    <div class="row" style="margin-bottom:12px">
+      <div class="field"><label for="org">Organisation folder</label><input id="org" type="text" value="IntuneTools">
+        <div class="note">Used for the log folder and registry marker key.</div></div>
+      <div class="field"><label for="lookback">Look back (days)</label><input id="lookback" type="number" min="1" max="90" value="7">
+        <div class="note">How far back detection searches update history and the event log.</div></div>
+      <div class="field"><label for="trigger">Detection triggers on</label>
+        <select id="trigger">
+          <option value="either">Error seen recently, or a known bad state</option>
+          <option value="error">Only the error being seen recently</option>
+          <option value="state">Only a known bad state</option>
+        </select></div>
+    </div>
+    <div id="plan"><div class="empty">Select one or more error codes to see the fix plan.</div></div>
+    <div class="banner">Scripts are generated from fixed templates and checked by automated tests, but every estate is different.
+      Read them, then pilot on a small device group before assigning widely.</div>
+  </section>
+
+  <section class="card" aria-labelledby="h-out">
+    <h2 id="h-out">3. Scripts</h2>
+    <div id="outEmpty" class="empty">Your detection and remediation scripts will appear here.</div>
+    <div id="out" hidden>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-tab="detection" aria-selected="true">Detection</button>
+        <button class="tab" role="tab" data-tab="remediation" aria-selected="false">Remediation</button>
+        <button class="tab" role="tab" data-tab="intune" aria-selected="false">Intune setup</button>
+      </div>
+      <div id="codePane">
+        <div class="toolbar">
+          <span class="fname" id="fname"></span>
+          <button class="ghost" id="copyBtn">Copy</button>
+          <button class="ghost" id="dlBtn">Download</button>
+          <button class="primary" id="dlBoth">Download both</button>
+        </div>
+        <pre id="code"></pre>
+      </div>
+      <div id="intunePane" hidden></div>
+    </div>
+  </section>
+
+  <p class="note">Part of <a href="https://github.com/mrbernardmah/intune-tools" target="_blank" rel="noopener">intune-tools</a>.
+    Error code descriptions are paraphrased; see Microsoft's reference for the original wording.</p>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="wu-codes.js"></script>
+<script src="generator.js"></script>
+<script>
+(function () {
+  'use strict';
+  const D = window.WU_DATA, G = window.WUGen;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const PB_LABEL = { policy: 'Policy', services: 'Services', bits: 'BITS', reset: 'Reset', network: 'Network', repair: 'DISM/SFC', reboot: 'Restart', info: 'Info' };
+
+  const state = { selected: [], playbooks: null, tab: 'detection', scripts: null };
+
+  $('srcLink').href = D.SOURCE_URL;
+  for (const c of D.COMPONENTS) $('comp').insertAdjacentHTML('beforeend', '<option value="' + c.id + '">' + esc(c.name) + '</option>');
+  for (const p of Object.keys(PB_LABEL)) $('pbFilter').insertAdjacentHTML('beforeend', '<option value="' + p + '">' + esc(G.PLAYBOOKS[p].title) + '</option>');
+
+  // ---------------------------------------------------------------- table
+  function matches(e, q, comp, pb) {
+    if (comp && e.componentId !== comp) return false;
+    if (pb && !e.playbooks.includes(pb)) return false;
+    if (!q) return true;
+    const n = G.normalizeCode(q);
+    if (n && e.code === n) return true;
+    const hay = (e.code + ' ' + e.name + ' ' + e.desc + ' ' + e.component).toLowerCase();
+    return q.toLowerCase().split(/\s+/).every(w => hay.includes(w.replace(/^0x/, '')) || hay.includes(w));
+  }
+
+  function renderRows() {
+    const q = $('q').value.trim(), comp = $('comp').value, pb = $('pbFilter').value;
+    const list = D.CODES.filter(e => matches(e, q, comp, pb));
+    $('rows').innerHTML = list.map(e => {
+      const sel = state.selected.includes(e.code);
+      const tags = e.playbooks.map(p => '<span class="tag ' + (p === 'info' ? 'info' : 'fix') + '">' + PB_LABEL[p] + '</span>').join('');
+      return '<tr data-code="' + e.code + '"' + (sel ? ' class="sel"' : '') + '>' +
+        '<td><input type="checkbox" tabindex="-1" aria-label="Select ' + e.code + '"' + (sel ? ' checked' : '') + '></td>' +
+        '<td class="code">' + e.code + '</td><td class="name">' + esc(e.name || '-') + '</td>' +
+        '<td>' + esc(e.desc) + '<div class="note" style="margin:0">' + esc(e.component) + '</div></td><td>' + tags + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="note" style="padding:14px">No codes match.</td></tr>';
+    $('count').textContent = list.length + ' of ' + D.CODES.length + ' codes';
+    const n = G.normalizeCode(q);
+    const custom = n && !D.BY_CODE[n] && !state.selected.includes(n);
+    $('addCustom').hidden = !custom;
+    if (custom) $('customCode').textContent = n;
+  }
+
+  $('rows').addEventListener('click', ev => {
+    const tr = ev.target.closest('tr[data-code]');
+    if (!tr) return;
+    toggle(tr.dataset.code);
+  });
+  $('addCustom').addEventListener('click', () => { const n = G.normalizeCode($('q').value); if (n) toggle(n, true); });
+  $('q').addEventListener('keydown', ev => {
+    if (ev.key !== 'Enter') return;
+    const n = G.normalizeCode($('q').value.trim());
+    if (n) { if (!state.selected.includes(n)) toggle(n, true); $('q').select(); }
+  });
+  for (const id of ['q', 'comp', 'pbFilter']) $(id).addEventListener('input', renderRows);
+
+  function toggle(code, forceOn) {
+    const i = state.selected.indexOf(code);
+    if (i >= 0 && !forceOn) state.selected.splice(i, 1);
+    else if (i < 0) state.selected.push(code);
+    state.playbooks = null;           // re-derive the plan from the new selection
+    update();
+  }
+
+  function renderSelected() {
+    $('selected').innerHTML = state.selected.length ? state.selected.map(c =>
+      '<span class="chip' + (D.BY_CODE[c] ? '' : ' unknown') + '" title="' + esc(D.BY_CODE[c] ? D.BY_CODE[c].desc : 'Not in the Microsoft reference') + '">' + c +
+      '<button data-rm="' + c + '" aria-label="Remove ' + c + '">&times;</button></span>').join('')
+      : '<span class="note">Nothing selected yet. Click rows in the table, or type a code and press Enter.</span>';
+    $('selCount').textContent = state.selected.length ? '(' + state.selected.length + ')' : '';
+  }
+  $('selected').addEventListener('click', ev => { const b = ev.target.closest('[data-rm]'); if (b) toggle(b.dataset.rm); });
+  $('clearSel').addEventListener('click', () => { state.selected = []; state.playbooks = null; update(); });
+
+  // ---------------------------------------------------------------- plan
+  const OPT_DEFS = {
+    policy: [['policyRemoveWsus', 'Remove WSUS server values', 'check'], ['policyRemoveBlocks', 'Remove access-blocking values', 'check'], ['skipIfConfigMgr', 'Keep WSUS values on Configuration Manager clients', 'check']],
+    reset: [['resetCatroot2', 'Also reset catroot2', 'check']],
+    network: [['resetWinHttpProxy', 'Reset WinHTTP proxy to direct (breaks devices that need a machine proxy)', 'check']],
+    repair: [['runSfc', 'Run sfc /scannow after DISM', 'check'], ['checkImageHealth', 'Flag unhealthy image in detection', 'check']],
+    reboot: [['scheduleRestart', 'Schedule a restart', 'check'], ['restartMinutes', 'minutes warning', 'number']]
+  };
+  const opts = Object.assign({}, G.DEFAULTS);
+  delete opts.playbooks;
+
+  function derived() { return G.playbooksFor(state.selected, D).filter(p => p !== 'info'); }
+
+  function renderPlan() {
+    if (!state.selected.length) { $('plan').innerHTML = '<div class="empty">Select one or more error codes to see the fix plan.</div>'; return; }
+    const auto = derived();
+    const active = state.playbooks || auto;
+    const order = G.PLAYBOOK_ORDER.filter(p => p !== 'scan');
+    const shown = order.filter(p => auto.includes(p)).concat(order.filter(p => !auto.includes(p)));
+    let html = '';
+    if (!auto.length) html += '<div class="banner" style="margin:0 0 10px">The selected codes are informational; no device-side fix is mapped. The package will still report occurrences and, if enabled, start a fresh scan. You can switch on a playbook below if you want one.</div>';
+    for (const p of shown) {
+      const meta = G.PLAYBOOKS[p];
+      const on = active.includes(p);
+      const opt = (OPT_DEFS[p] || []).map(([k, label, kind]) => kind === 'number'
+        ? '<label><input type="number" min="5" max="1440" data-opt="' + k + '" value="' + esc(opts[k]) + '"' + (on ? '' : ' disabled') + '> ' + esc(label) + '</label>'
+        : '<label><input type="checkbox" data-opt="' + k + '"' + (opts[k] ? ' checked' : '') + (on ? '' : ' disabled') + '> ' + esc(label) + '</label>').join('');
+      html += '<div class="pb' + (on ? '' : ' off') + '"><label class="pb-head"><input type="checkbox" data-pb="' + p + '"' + (on ? ' checked' : '') + '> ' +
+        esc(meta.title) + (auto.includes(p) ? ' <small>suggested for your codes</small>' : ' <small>optional</small>') + '</label>' +
+        '<p>' + esc(meta.summary) + '</p>' + (meta.risk ? '<p class="risk">' + esc(meta.risk) + '</p>' : '') +
+        (opt ? '<div class="opts">' + opt + '</div>' : '') + '</div>';
+    }
+    html += '<div class="pb"><label class="pb-head"><input type="checkbox" data-opt="triggerScan"' + (opts.triggerScan ? ' checked' : '') + '> Start a Windows Update scan at the end</label>' +
+      '<p>Runs UsoClient StartScan (or the agent DetectNow method on older builds) so the device re-reports quickly.</p></div>';
+    $('plan').innerHTML = html;
+  }
+
+  $('plan').addEventListener('change', ev => {
+    const t = ev.target;
+    if (t.dataset.pb) {
+      const cur = new Set(state.playbooks || derived());
+      if (t.checked) cur.add(t.dataset.pb); else cur.delete(t.dataset.pb);
+      state.playbooks = G.PLAYBOOK_ORDER.filter(p => cur.has(p));
+    } else if (t.dataset.opt) {
+      opts[t.dataset.opt] = t.type === 'checkbox' ? t.checked : t.value;
+    }
+    update();
+  });
+  $('org').addEventListener('input', () => { opts.org = $('org').value; update(false); });
+  $('lookback').addEventListener('input', () => { opts.lookbackDays = $('lookback').value; update(false); });
+  $('trigger').addEventListener('change', () => { opts.triggerMode = $('trigger').value; update(false); });
+
+  // ---------------------------------------------------------------- output
+  function build() {
+    if (!state.selected.length) { state.scripts = null; return; }
+    const o = Object.assign({}, opts, { playbooks: state.playbooks || derived() });
+    const today = new Date().toISOString().slice(0, 10);
+    state.scripts = {
+      names: G.fileNames(state.selected, o, D),
+      detection: G.detectionScript(state.selected, o, D, today),
+      remediation: G.remediationScript(state.selected, o, D, today),
+      summary: G.summarize(state.selected, o, D)
+    };
+  }
+
+  function renderOut() {
+    const s = state.scripts;
+    $('outEmpty').hidden = !!s; $('out').hidden = !s;
+    if (!s) return;
+    document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === state.tab)));
+    const isCode = state.tab !== 'intune';
+    $('codePane').hidden = !isCode; $('intunePane').hidden = isCode;
+    if (isCode) {
+      $('code').textContent = s[state.tab];
+      $('fname').textContent = s.names[state.tab] + '  -  ' + (new Blob([s[state.tab]]).size / 1024).toFixed(1) + ' KB';
+    } else {
+      $('intunePane').innerHTML = intuneHtml(s);
+    }
+  }
+
+  function intuneHtml(s) {
+    const name = 'WU error ' + s.summary.codes.join(', ');
+    const pbs = s.summary.playbooks.length ? s.summary.playbooks.map(p => '<li><b>' + esc(p.title) + '</b> - ' + esc(p.summary) + '</li>').join('') : '<li>Report only (informational codes).</li>';
+    const unknown = s.summary.unknown.length ? '<div class="banner">Not in Microsoft\'s reference: ' + s.summary.unknown.map(esc).join(', ') + '. Detection still searches for them; pick a fix playbook manually above.</div>' : '';
+    return unknown + '<ol class="steps">' +
+      '<li>In the Intune admin center go to <b>Devices &gt; Scripts and remediations &gt; Remediations &gt; Create</b>.</li>' +
+      '<li>Name it <code>' + esc(name.length > 120 ? name.slice(0, 117) + '...' : name) + '</code>.</li>' +
+      '<li>Upload <code>' + esc(s.names.detection) + '</code> as the detection script and <code>' + esc(s.names.remediation) + '</code> as the remediation script.</li>' +
+      '<li>Use these settings:<table class="kv" style="margin:6px 0"><tbody>' +
+      '<tr><td>Run this script using the logged-on credentials</td><td>No (runs as SYSTEM)</td></tr>' +
+      '<tr><td>Enforce script signature check</td><td>No, unless you sign the scripts</td></tr>' +
+      '<tr><td>Run script in 64-bit PowerShell</td><td>Yes</td></tr>' +
+      '<tr><td>Schedule</td><td>Daily is a good start; hourly only while piloting</td></tr></tbody></table></li>' +
+      '<li>Assign to a pilot group first, then review <b>Device status</b>: the pre- and post-remediation output columns show the status line from each script.</li>' +
+      '</ol><h2 style="margin-top:14px">What the remediation does</h2><ul>' + pbs + '</ul>' +
+      '<p class="note">Log: <code>%ProgramData%\\' + esc(s.summary.options.org) + '\\Logs\\WUErrorRemediation-' + esc(s.names.id) + '.log</code>. ' +
+      'After a successful run the remediation records the time under <code>HKLM\\SOFTWARE\\' + esc(s.summary.options.org) + '\\WUErrorRemediation\\' + esc(s.names.id) + '</code>, ' +
+      'so detection only counts errors that happen afterwards.</p>';
+  }
+
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { state.tab = b.dataset.tab; renderOut(); }));
+
+  function download(name, text) {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+    const a = document.createElement('a'); a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1600); }
+
+  $('copyBtn').addEventListener('click', async () => {
+    const text = state.scripts[state.tab];
+    try { await navigator.clipboard.writeText(text); toast('Copied'); }
+    catch (e) { const r = document.createRange(); r.selectNodeContents($('code')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('Press Ctrl+C to copy'); }
+  });
+  $('dlBtn').addEventListener('click', () => download(state.scripts.names[state.tab], state.scripts[state.tab]));
+  $('dlBoth').addEventListener('click', () => {
+    download(state.scripts.names.detection, state.scripts.detection);
+    setTimeout(() => download(state.scripts.names.remediation, state.scripts.remediation), 400);
+  });
+
+  // ---------------------------------------------------------------- state in the URL
+  function writeHash() {
+    const h = state.selected.length ? '#codes=' + state.selected.join(',') : ' ';
+    try { history.replaceState(null, '', h === ' ' ? location.pathname + location.search : h); } catch (e) { }
+  }
+  function readHash() {
+    const m = /codes=([^&]+)/.exec(location.hash || location.search);
+    if (!m) return;
+    for (const c of decodeURIComponent(m[1]).split(',')) { const n = G.normalizeCode(c); if (n && !state.selected.includes(n)) state.selected.push(n); }
+  }
+
+  function update(rerenderPlan) {
+    if (rerenderPlan !== false) { renderRows(); renderSelected(); renderPlan(); }
+    build(); renderOut(); writeHash();
+  }
+
+  readHash();
+  update();
+})();
+</script>
+</body>
+</html>

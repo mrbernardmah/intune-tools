@@ -1,0 +1,1316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Windows Update Error Remediation Builder for Intune</title>
+<meta name="description" content="Pick Windows Update error codes and get matching Intune Remediation detection and remediation PowerShell scripts. Runs in your browser, no sign-in.">
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --text: #1b1f24; --muted: #5b6672; --line: #dfe3e8;
+    --accent: #0f6cbd; --accent-text: #ffffff; --ok: #1a7f37; --warn: #9a6700; --err: #cf222e;
+    --code-bg: #0f1720; --code-text: #e6edf3; --row-sel: #e8f1fb;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0e1116; --card: #161b22; --text: #e6edf3; --muted: #9aa5b1; --line: #2b323b;
+      --accent: #4493f8; --accent-text: #0e1116; --ok: #3fb950; --warn: #d29922; --err: #f85149;
+      --code-bg: #0b0f14; --code-text: #e6edf3; --row-sel: #15253a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-size: 22px; margin: 0 0 4px; }
+  h2 { font-size: 16px; margin: 0 0 10px; }
+  .sub { color: var(--muted); margin: 0 0 18px; }
+  a { color: var(--accent); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  label { font-size: 13px; }
+  .field > label { display: block; font-weight: 600; margin: 0 0 6px; }
+  input[type=text], input[type=number], select {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px;
+    background: var(--bg); color: var(--text); font: inherit;
+  }
+  .row { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); }
+  .filters { display: grid; gap: 10px; grid-template-columns: 2fr 1fr 1fr; margin-bottom: 10px; }
+  @media (max-width: 700px) {
+    .filters { grid-template-columns: 1fr; }
+    thead th:nth-child(3), td.name { display: none; }
+  }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; align-items: center; }
+  .chip { display: inline-flex; gap: 6px; align-items: center; border: 1px solid var(--line); background: var(--bg); color: var(--text);
+    border-radius: 999px; padding: 2px 6px 2px 10px; font: 13px ui-monospace, Consolas, monospace; }
+  .chip button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px; }
+  .chip button:hover { color: var(--err); }
+  .chip.unknown { border-style: dashed; }
+  button.primary { background: var(--accent); color: var(--accent-text); border: 0; border-radius: 8px; padding: 8px 16px; font: inherit; font-weight: 600; cursor: pointer; }
+  button.primary:disabled { opacity: .5; cursor: default; }
+  button.ghost { background: transparent; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font: inherit; cursor: pointer; }
+  button.ghost:hover { border-color: var(--accent); }
+  .note { font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  .banner { border-left: 4px solid var(--warn); padding: 8px 12px; background: var(--bg); border-radius: 4px; font-size: 13px; margin-top: 12px; }
+  .tablewrap { max-height: 420px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { position: sticky; top: 0; background: var(--card); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); z-index: 1; }
+  tbody tr { cursor: pointer; }
+  tbody tr:hover { background: var(--bg); }
+  tbody tr.sel { background: var(--row-sel); }
+  td.code { font-family: ui-monospace, Consolas, monospace; white-space: nowrap; }
+  td.name { font-family: ui-monospace, Consolas, monospace; font-size: 12px; word-break: break-all; color: var(--muted); }
+  .tag { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px; margin: 1px 2px 1px 0; border: 1px solid var(--line); white-space: nowrap; }
+  .tag.info { color: var(--muted); }
+  .tag.fix { color: var(--accent); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+  .count { color: var(--muted); font-size: 13px; }
+  .pb { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+  .pb.off { opacity: .6; }
+  .pb-head { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+  .pb-head small { font-weight: 400; color: var(--muted); }
+  .pb p { margin: 4px 0 0 24px; font-size: 13px; }
+  .pb .risk { color: var(--warn); }
+  .pb .opts { margin: 6px 0 0 24px; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; }
+  .pb .opts input[type=number] { width: 80px; padding: 3px 6px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 12px; flex-wrap: wrap; }
+  .tab { background: none; border: 0; padding: 8px 14px; cursor: pointer; color: var(--muted); font: inherit; border-bottom: 2px solid transparent; }
+  .tab[aria-selected=true] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  pre { background: var(--code-bg); color: var(--code-text); padding: 14px; border-radius: 8px; overflow: auto; font: 12.5px/1.5 ui-monospace, Consolas, monospace; margin: 0; max-height: 560px; }
+  .toolbar { display: flex; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; align-items: center; }
+  .toolbar .fname { font: 13px ui-monospace, Consolas, monospace; color: var(--muted); margin-right: auto; }
+  .empty { color: var(--muted); padding: 30px; text-align: center; border: 1px dashed var(--line); border-radius: 8px; }
+  .steps li { margin-bottom: 6px; }
+  .kv td:first-child { color: var(--muted); width: 45%; }
+  .toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 13px; opacity: 0; transition: opacity .2s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Windows Update Error Remediation Builder</h1>
+  <p class="sub">Pick the Windows Update error codes your devices report and get an Intune Remediation pair:
+    a read-only <b>detection</b> script and a matching <b>remediation</b> script. Everything runs in this page; nothing is sent anywhere.
+    Codes come from Microsoft's <a id="srcLink" target="_blank" rel="noopener">Windows Update error reference</a>.</p>
+
+  <section class="card" aria-labelledby="h-pick">
+    <h2 id="h-pick">1. Pick error codes</h2>
+    <div class="filters">
+      <div class="field"><label for="q">Search code, name or description</label>
+        <input id="q" type="text" placeholder="0x80070422, 8024402C, -2147023838, proxy, BITS..." autocomplete="off"></div>
+      <div class="field"><label for="comp">Component</label><select id="comp"><option value="">All components</option></select></div>
+      <div class="field"><label for="pbFilter">Fix type</label><select id="pbFilter"><option value="">All fix types</option></select></div>
+    </div>
+    <div class="toolbar">
+      <span class="count" id="count"></span>
+      <span style="margin-left:auto"></span>
+      <button class="ghost" id="addCustom" hidden>Add <span id="customCode"></span> (not in reference)</button>
+    </div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th style="width:28px"></th><th>Code</th><th>Name</th><th>Description</th><th>Fix</th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:12px">
+      <div class="field"><label>Selected <span class="count" id="selCount"></span></label></div>
+      <div class="chips" id="selected"></div>
+      <div class="toolbar" style="margin-top:6px"><button class="ghost" id="clearSel">Clear selection</button>
+        <span class="note">Tip: select several related codes to cover them with one package. The page URL keeps your selection so you can share it.</span></div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="h-plan">
+    <h2 id="h-plan">2. Fix plan and options</h2>
+    <div class="row" style="margin-bottom:12px">
+      <div class="field"><label for="org">Organisation folder</label><input id="org" type="text" value="IntuneTools">
+        <div class="note">Used for the log folder and registry marker key.</div></div>
+      <div class="field"><label for="lookback">Look back (days)</label><input id="lookback" type="number" min="1" max="90" value="7">
+        <div class="note">How far back detection searches update history and the event log.</div></div>
+      <div class="field"><label for="trigger">Detection triggers on</label>
+        <select id="trigger">
+          <option value="either">Error seen recently, or a known bad state</option>
+          <option value="error">Only the error being seen recently</option>
+          <option value="state">Only a known bad state</option>
+        </select></div>
+    </div>
+    <div id="plan"><div class="empty">Select one or more error codes to see the fix plan.</div></div>
+    <div class="banner">Scripts are generated from fixed templates and checked by automated tests, but every estate is different.
+      Read them, then pilot on a small device group before assigning widely.</div>
+  </section>
+
+  <section class="card" aria-labelledby="h-out">
+    <h2 id="h-out">3. Scripts</h2>
+    <div id="outEmpty" class="empty">Your detection and remediation scripts will appear here.</div>
+    <div id="out" hidden>
+      <div class="tabs" role="tablist">
+        <button class="tab" role="tab" data-tab="detection" aria-selected="true">Detection</button>
+        <button class="tab" role="tab" data-tab="remediation" aria-selected="false">Remediation</button>
+        <button class="tab" role="tab" data-tab="intune" aria-selected="false">Intune setup</button>
+      </div>
+      <div id="codePane">
+        <div class="toolbar">
+          <span class="fname" id="fname"></span>
+          <button class="ghost" id="copyBtn">Copy</button>
+          <button class="ghost" id="dlBtn">Download</button>
+          <button class="primary" id="dlBoth">Download both</button>
+        </div>
+        <pre id="code"></pre>
+      </div>
+      <div id="intunePane" hidden></div>
+    </div>
+  </section>
+
+  <p class="note">Part of <a href="https://github.com/mrbernardmah/intune-tools" target="_blank" rel="noopener">intune-tools</a>.
+    Error code descriptions are paraphrased; see Microsoft's reference for the original wording.</p>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/*
+ * Windows Update error codes, grouped by component.
+ * Codes and symbolic names follow Microsoft's reference:
+ *   https://learn.microsoft.com/en-us/windows/deployment/update/windows-update-error-reference
+ * Descriptions are short paraphrases. Each code is mapped to one or more fix playbooks
+ * (see PLAYBOOKS in generator.js). "info" means no device-side fix is expected.
+ *
+ * Row format: [code, symbolicName, shortDescription, playbooks]
+ */
+(function (root) {
+  'use strict';
+
+  const SOURCE_URL = 'https://learn.microsoft.com/en-us/windows/deployment/update/windows-update-error-reference';
+
+  const COMPONENTS = [
+    { id: 'au', name: 'Automatic Updates', rows: [
+      ['0x8024A000', 'WU_E_AU_NOSERVICE', 'Automatic Updates could not service incoming requests.', ['services']],
+      ['0x8024A002', 'WU_E_AU_NONLEGACYSERVER', 'Old Automatic Updates client stopped because the WSUS server was upgraded.', ['policy']],
+      ['0x8024A003', 'WU_E_AU_LEGACYCLIENTDISABLED', 'The old Automatic Updates client was disabled.', ['policy', 'services']],
+      ['0x8024A004', 'WU_E_AU_PAUSED', 'Automatic Updates was paused and could not process requests.', ['services']],
+      ['0x8024A005', 'WU_E_AU_NO_REGISTERED_SERVICE', 'No unmanaged update service is registered with Automatic Updates.', ['services', 'reset']],
+      ['0x8024AFFF', 'WU_E_AU_UNEXPECTED', 'Automatic Updates error not covered by a more specific code.', ['services', 'reset']]
+    ]},
+    { id: 'ui', name: 'Windows Update UI', rows: [
+      ['0x80243001', 'WU_E_INSTALLATION_RESULTS_UNKNOWN_VERSION', 'Install results in the registry use an unrecognised format version.', ['reset']],
+      ['0x80243002', 'WU_E_INSTALLATION_RESULTS_INVALID_DATA', 'Install results in the registry are in an invalid format.', ['reset']],
+      ['0x80243003', 'WU_E_INSTALLATION_RESULTS_NOT_FOUND', 'Install results are missing; the operation may not have started.', ['reset']],
+      ['0x80243004', 'WU_E_TRAYICON_FAILURE', 'Could not create the notification-area icon.', ['info']],
+      ['0x80243FFD', 'WU_E_NON_UI_MODE', 'UI cannot be shown in non-UI mode; UI modules may be missing.', ['info']],
+      ['0x80243FFE', 'WU_E_WUCLTUI_UNSUPPORTED_VERSION', 'Unsupported version of the Windows Update client UI exports.', ['repair']],
+      ['0x80243FFF', 'WU_E_AUCLIENT_UNEXPECTED', 'Client UI error not covered by a more specific code.', ['services', 'reset']],
+      ['0x8024043D', 'WU_E_SERVICEPROP_NOTAVAIL', 'A requested service property is unavailable.', ['services']]
+    ]},
+    { id: 'inventory', name: 'Inventory', rows: [
+      ['0x80249001', 'WU_E_INVENTORY_PARSEFAILED', 'The inventory rule file could not be parsed.', ['reset']],
+      ['0x80249002', 'WU_E_INVENTORY_GET_INVENTORY_TYPE_FAILED', 'Could not get the requested inventory type from the server.', ['network', 'reset']],
+      ['0x80249003', 'WU_E_INVENTORY_RESULT_UPLOAD_FAILED', 'Inventory results could not be uploaded to the server.', ['network']],
+      ['0x80249004', 'WU_E_INVENTORY_UNEXPECTED', 'Inventory error not covered by a more specific code.', ['reset']],
+      ['0x80249005', 'WU_E_INVENTORY_WMI_ERROR', 'A WMI error occurred while enumerating class instances.', ['repair']]
+    ]},
+    { id: 'ee', name: 'Expression evaluator', rows: [
+      ['0x8024E001', 'WU_E_EE_UNKNOWN_EXPRESSION', 'An applicability expression was not recognised.', ['reset']],
+      ['0x8024E002', 'WU_E_EE_INVALID_EXPRESSION', 'An applicability expression was invalid.', ['reset']],
+      ['0x8024E003', 'WU_E_EE_MISSING_METADATA', 'An expression has the wrong number of metadata nodes.', ['reset']],
+      ['0x8024E004', 'WU_E_EE_INVALID_VERSION', 'Serialized expression data has an invalid version.', ['reset']],
+      ['0x8024E005', 'WU_E_EE_NOT_INITIALIZED', 'The expression evaluator could not initialise.', ['reset', 'repair']],
+      ['0x8024E006', 'WU_E_EE_INVALID_ATTRIBUTEDATA', 'An expression contained an invalid attribute.', ['reset']],
+      ['0x8024E007', 'WU_E_EE_CLUSTER_ERROR', 'The cluster state of the computer could not be determined.', ['info']],
+      ['0x8024EFFF', 'WU_E_EE_UNEXPECTED', 'Expression evaluator error not covered by a more specific code.', ['reset']]
+    ]},
+    { id: 'reporter', name: 'Reporter', rows: [
+      ['0x80247001', 'WU_E_OL_INVALID_SCANFILE', 'The offline scan package was invalid.', ['reset']],
+      ['0x80247002', 'WU_E_OL_NEWCLIENT_REQUIRED', 'The scan package needs a newer Windows Update Agent.', ['repair']],
+      ['0x80247FFF', 'WU_E_OL_UNEXPECTED', 'Search using the scan package failed.', ['reset']],
+      ['0x8024F001', 'WU_E_REPORTER_EVENTCACHECORRUPT', 'The reporting event cache file is corrupt.', ['reset']],
+      ['0x8024F002', 'WU_E_REPORTER_EVENTNAMESPACEPARSEFAILED', 'The event namespace descriptor XML could not be parsed.', ['reset']],
+      ['0x8024F003', 'WU_E_INVALID_EVENT', 'An event was invalid (descriptor XML could not be parsed).', ['reset']],
+      ['0x8024F004', 'WU_E_SERVER_BUSY', 'The server rejected an event because it was too busy.', ['network']],
+      ['0x8024FFFF', 'WU_E_REPORTER_UNEXPECTED', 'Reporter error not covered by a more specific code.', ['reset']]
+    ]},
+    { id: 'redirector', name: 'Redirector', rows: [
+      ['0x80245001', 'WU_E_REDIRECTOR_LOAD_XML', 'The redirector XML (wuredir.cab) could not be loaded.', ['reset', 'network']],
+      ['0x80245002', 'WU_E_REDIRECTOR_S_FALSE', 'The redirector XML is missing required information.', ['reset', 'network']],
+      ['0x80245003', 'WU_E_REDIRECTOR_ID_SMALLER', 'Downloaded redirector cab is older than the cached one.', ['reset']],
+      ['0x80245FFF', 'WU_E_REDIRECTOR_UNEXPECTED', 'Redirector error not covered by a more specific code.', ['reset', 'network']]
+    ]},
+    { id: 'pt-soap', name: 'Protocol Talker (SOAP client)', rows: [
+      ['0x80244000', 'WU_E_PT_SOAPCLIENT_BASE', 'Base value for SOAP client errors.', ['reset', 'network']],
+      ['0x80244001', 'WU_E_PT_SOAPCLIENT_INITIALIZE', 'SOAP client failed to initialise, possibly an MSXML problem.', ['repair']],
+      ['0x80244002', 'WU_E_PT_SOAPCLIENT_OUTOFMEMORY', 'SOAP client ran out of memory.', ['reboot']],
+      ['0x80244003', 'WU_E_PT_SOAPCLIENT_GENERATE', 'SOAP client failed to build the request.', ['reset']],
+      ['0x80244004', 'WU_E_PT_SOAPCLIENT_CONNECT', 'SOAP client could not connect to the update server.', ['network']],
+      ['0x80244005', 'WU_E_PT_SOAPCLIENT_SEND', 'SOAP client failed to send a message (WinHTTP error).', ['network']],
+      ['0x80244006', 'WU_E_PT_SOAPCLIENT_SERVER', 'SOAP client failed because of a server error.', ['network']],
+      ['0x80244007', 'WU_E_PT_SOAPCLIENT_SOAPFAULT', 'SOAP client received a SOAP fault.', ['reset', 'network']],
+      ['0x80244008', 'WU_E_PT_SOAPCLIENT_PARSEFAULT', 'SOAP client could not parse a SOAP fault.', ['reset']],
+      ['0x80244009', 'WU_E_PT_SOAPCLIENT_READ', 'SOAP client failed while reading the server response.', ['network']],
+      ['0x8024400A', 'WU_E_PT_SOAPCLIENT_PARSE', 'SOAP client could not parse the server response.', ['reset', 'network']]
+    ]},
+    { id: 'pt', name: 'Protocol Talker (other)', rows: [
+      ['0x8024400B', 'WU_E_PT_SOAP_VERSION', 'Unrecognised namespace in the SOAP envelope.', ['reset']],
+      ['0x8024400C', 'WU_E_PT_SOAP_MUST_UNDERSTAND', 'SOAP client could not understand a header.', ['reset']],
+      ['0x8024400D', 'WU_E_PT_SOAP_CLIENT', 'The SOAP message was malformed.', ['reset', 'policy']],
+      ['0x8024400E', 'WU_E_PT_SOAP_SERVER', 'Server error processing the SOAP message; retry later.', ['network']],
+      ['0x8024400F', 'WU_E_PT_WMI_ERROR', 'An unspecified WMI error occurred.', ['repair']],
+      ['0x80244010', 'WU_E_PT_EXCEEDED_MAX_SERVER_TRIPS', 'Too many round trips to the server.', ['reset', 'network']],
+      ['0x80244011', 'WU_E_PT_SUS_SERVER_NOT_SET', 'The WUServer policy value is missing.', ['policy']],
+      ['0x80244012', 'WU_E_PT_DOUBLE_INITIALIZATION', 'Object was initialised twice.', ['services']],
+      ['0x80244013', 'WU_E_PT_INVALID_COMPUTER_NAME', 'The computer name could not be determined.', ['info']],
+      ['0x80244015', 'WU_E_PT_REFRESH_CACHE_REQUIRED', 'Server changed or cookie invalid; local cache must be refreshed.', ['reset']],
+      ['0x80244016', 'WU_E_PT_HTTP_STATUS_BAD_REQUEST', 'HTTP 400: the server could not process the request.', ['network', 'reset']],
+      ['0x80244017', 'WU_E_PT_HTTP_STATUS_DENIED', 'HTTP 401: authentication required.', ['network', 'policy']],
+      ['0x80244018', 'WU_E_PT_HTTP_STATUS_FORBIDDEN', 'HTTP 403: the server refused the request (often a proxy or firewall).', ['network', 'policy']],
+      ['0x80244019', 'WU_E_PT_HTTP_STATUS_NOT_FOUND', 'HTTP 404: requested URI not found (often a bad WSUS URL).', ['network', 'policy']],
+      ['0x8024401A', 'WU_E_PT_HTTP_STATUS_BAD_METHOD', 'HTTP 405: method not allowed.', ['network']],
+      ['0x8024401B', 'WU_E_PT_HTTP_STATUS_PROXY_AUTH_REQ', 'HTTP 407: proxy authentication required.', ['network']],
+      ['0x8024401C', 'WU_E_PT_HTTP_STATUS_REQUEST_TIMEOUT', 'HTTP 408: server timed out waiting for the request.', ['network']],
+      ['0x8024401D', 'WU_E_PT_HTTP_STATUS_CONFLICT', 'HTTP 409: conflict with the resource state.', ['network']],
+      ['0x8024401E', 'WU_E_PT_HTTP_STATUS_GONE', 'HTTP 410: resource no longer available.', ['network', 'reset']],
+      ['0x8024401F', 'WU_E_PT_HTTP_STATUS_SERVER_ERROR', 'HTTP 500: internal server error.', ['network']],
+      ['0x80244020', 'WU_E_PT_HTTP_STATUS_NOT_SUPPORTED', 'HTTP 501: functionality not supported by the server.', ['network']],
+      ['0x80244021', 'WU_E_PT_HTTP_STATUS_BAD_GATEWAY', 'HTTP 502: bad response from an upstream gateway or proxy.', ['network']],
+      ['0x80244022', 'WU_E_PT_HTTP_STATUS_SERVICE_UNAVAIL', 'HTTP 503: service temporarily overloaded.', ['network']],
+      ['0x80244023', 'WU_E_PT_HTTP_STATUS_GATEWAY_TIMEOUT', 'HTTP 504: gateway timed out.', ['network']],
+      ['0x80244024', 'WU_E_PT_HTTP_STATUS_VERSION_NOT_SUP', 'HTTP 505: HTTP version not supported.', ['network']],
+      ['0x80244025', 'WU_E_PT_FILE_LOCATIONS_CHANGED', 'File location changed; internal state must be refreshed.', ['reset']],
+      ['0x80244026', 'WU_E_PT_REGISTRATION_NOT_SUPPORTED', 'Registration with a non-WSUS server is not supported.', ['policy']],
+      ['0x80244027', 'WU_E_PT_NO_AUTH_PLUGINS_REQUESTED', 'Server returned an empty authentication list.', ['policy', 'reset']],
+      ['0x80244028', 'WU_E_PT_NO_AUTH_COOKIES_CREATED', 'No valid authentication cookies could be created.', ['reset', 'network']],
+      ['0x80244029', 'WU_E_PT_INVALID_CONFIG_PROP', 'A configuration property value was wrong.', ['policy']],
+      ['0x8024402A', 'WU_E_PT_CONFIG_PROP_MISSING', 'A configuration property value was missing.', ['policy']],
+      ['0x8024402B', 'WU_E_PT_HTTP_STATUS_NOT_MAPPED', 'HTTP failure not covered by a more specific HTTP code.', ['network']],
+      ['0x8024402C', 'WU_E_PT_WINHTTP_NAME_NOT_RESOLVED', 'Proxy or update server name could not be resolved (DNS).', ['network']],
+      ['0x8024402F', 'WU_E_PT_ECP_SUCCEEDED_WITH_ERRORS', 'External cab processing finished with errors.', ['reset']],
+      ['0x80244030', 'WU_E_PT_ECP_INIT_FAILED', 'External cab processor failed to initialise.', ['reset']],
+      ['0x80244031', 'WU_E_PT_ECP_INVALID_FILE_FORMAT', 'A metadata file has an invalid format.', ['reset']],
+      ['0x80244032', 'WU_E_PT_ECP_INVALID_METADATA', 'External cab processor found invalid metadata.', ['reset']],
+      ['0x80244033', 'WU_E_PT_ECP_FAILURE_TO_EXTRACT_DIGEST', 'File digest could not be extracted from an external cab.', ['reset']],
+      ['0x80244034', 'WU_E_PT_ECP_FAILURE_TO_DECOMPRESS_CAB_FILE', 'An external cab file could not be decompressed.', ['reset']],
+      ['0x80244035', 'WU_E_PT_ECP_FILE_LOCATION_ERROR', 'External cab processor could not get file locations.', ['reset']],
+      ['0x80244FFF', 'WU_E_PT_UNEXPECTED', 'Communication error not covered by a more specific code.', ['network', 'reset']],
+      ['0x8024502D', 'WU_E_PT_SAME_REDIR_ID', 'Recovery could not download a newer redirector cab.', ['reset', 'network']],
+      ['0x8024502E', 'WU_E_PT_NO_MANAGED_RECOVER', 'Redirector recovery skipped because the server is managed.', ['policy']]
+    ]},
+    { id: 'dm', name: 'Download Manager', rows: [
+      ['0x80246001', 'WU_E_DM_URLNOTAVAILABLE', 'Requested file has no download URL.', ['reset']],
+      ['0x80246002', 'WU_E_DM_INCORRECTFILEHASH', 'Downloaded file hash did not match.', ['reset']],
+      ['0x80246003', 'WU_E_DM_UNKNOWNALGORITHM', 'File metadata asked for an unknown hash algorithm.', ['reset']],
+      ['0x80246004', 'WU_E_DM_NEEDDOWNLOADREQUEST', 'A download request is required from the handler.', ['reset']],
+      ['0x80246005', 'WU_E_DM_NONETWORK', 'No network connection for the download.', ['network']],
+      ['0x80246006', 'WU_E_DM_WRONGBITSVERSION', 'Incompatible BITS version.', ['bits', 'repair']],
+      ['0x80246007', 'WU_E_DM_NOTDOWNLOADED', 'The update has not been downloaded.', ['bits', 'reset']],
+      ['0x80246008', 'WU_E_DM_FAILTOCONNECTTOBITS', 'Download manager could not connect to BITS.', ['bits', 'services']],
+      ['0x80246009', 'WU_E_DM_BITSTRANSFERERROR', 'Unspecified BITS transfer error.', ['bits']],
+      ['0x8024600A', 'WU_E_DM_DOWNLOADLOCATIONCHANGED', 'Download source moved; download must restart.', ['reset']],
+      ['0x8024600B', 'WU_E_DM_CONTENTCHANGED', 'Update content changed in a new revision; download must restart.', ['reset']],
+      ['0x80246FFF', 'WU_E_DM_UNEXPECTED', 'Download manager error not covered by a more specific code.', ['bits', 'reset']]
+    ]},
+    { id: 'uh', name: 'Update Handler', rows: [
+      ['0x80242000', 'WU_E_UH_REMOTEUNAVAILABLE', 'No remote process available for the update handler.', ['services', 'reset']],
+      ['0x80242001', 'WU_E_UH_LOCALONLY', 'Handler is local only; remote request refused.', ['reset']],
+      ['0x80242002', 'WU_E_UH_UNKNOWNHANDLER', 'Update handler was not recognised.', ['reset']],
+      ['0x80242003', 'WU_E_UH_REMOTEALREADYACTIVE', 'A remote update handler already exists.', ['services']],
+      ['0x80242004', 'WU_E_UH_DOESNOTSUPPORTACTION', 'The update does not support install or uninstall.', ['info']],
+      ['0x80242005', 'WU_E_UH_WRONGHANDLER', 'The wrong handler was specified.', ['reset']],
+      ['0x80242006', 'WU_E_UH_INVALIDMETADATA', 'The update contains invalid metadata.', ['reset']],
+      ['0x80242007', 'WU_E_UH_INSTALLERHUNG', 'The installer exceeded its time limit.', ['reboot', 'reset']],
+      ['0x80242008', 'WU_E_UH_OPERATIONCANCELLED', 'The handler operation was cancelled.', ['info']],
+      ['0x80242009', 'WU_E_UH_BADHANDLERXML', 'Handler-specific metadata is invalid.', ['reset']],
+      ['0x8024200A', 'WU_E_UH_CANREQUIREINPUT', 'The update needs user input to install.', ['info']],
+      ['0x8024200B', 'WU_E_UH_INSTALLERFAILURE', 'The installer failed to install or uninstall one or more updates.', ['repair', 'reset']],
+      ['0x8024200C', 'WU_E_UH_FALLBACKTOSELFCONTAINED', 'Handler should use full content instead of delta content.', ['reset']],
+      ['0x8024200D', 'WU_E_UH_NEEDANOTHERDOWNLOAD', 'The update must be downloaded again.', ['reset']],
+      ['0x8024200E', 'WU_E_UH_NOTIFYFAILURE', 'Handler could not report install status.', ['services']],
+      ['0x8024200F', 'WU_E_UH_INCONSISTENT_FILE_NAMES', 'File names in the metadata and the package do not match.', ['reset']],
+      ['0x80242010', 'WU_E_UH_FALLBACKERROR', 'Handler could not fall back to full content.', ['reset']],
+      ['0x80242011', 'WU_E_UH_TOOMANYDOWNLOADREQUESTS', 'Handler exceeded the maximum download requests.', ['reset']],
+      ['0x80242012', 'WU_E_UH_UNEXPECTEDCBSRESPONSE', 'Unexpected response from Component Based Servicing.', ['repair']],
+      ['0x80242013', 'WU_E_UH_BADCBSPACKAGEID', 'Invalid CBS package identifier in the metadata.', ['repair', 'reset']],
+      ['0x80242014', 'WU_E_UH_POSTREBOOTSTILLPENDING', 'Post-restart operation is still in progress.', ['reboot']],
+      ['0x80242015', 'WU_E_UH_POSTREBOOTRESULTUNKNOWN', 'Post-restart result could not be determined.', ['reboot']],
+      ['0x80242016', 'WU_E_UH_POSTREBOOTUNEXPECTEDSTATE', 'Unexpected update state after the post-restart operation.', ['reboot', 'repair']],
+      ['0x80242017', 'WU_E_UH_NEW_SERVICING_STACK_REQUIRED', 'The servicing stack must be updated first.', ['repair']],
+      ['0x80242FFF', 'WU_E_UH_UNEXPECTED', 'Update handler error not covered by a more specific code.', ['reset', 'repair']]
+    ]},
+    { id: 'ds', name: 'Data Store', rows: [
+      ['0x80248000', 'WU_E_DS_SHUTDOWN', 'Windows Update Agent was shutting down.', ['services']],
+      ['0x80248001', 'WU_E_DS_INUSE', 'The data store was in use.', ['services']],
+      ['0x80248002', 'WU_E_DS_INVALID', 'Data store state does not match the expected state.', ['reset']],
+      ['0x80248003', 'WU_E_DS_TABLEMISSING', 'The data store is missing a table.', ['reset']],
+      ['0x80248004', 'WU_E_DS_TABLEINCORRECT', 'A data store table has unexpected columns.', ['reset']],
+      ['0x80248005', 'WU_E_DS_INVALIDTABLENAME', 'Table is not in the data store.', ['reset']],
+      ['0x80248006', 'WU_E_DS_BADVERSION', 'Data store version does not match.', ['reset']],
+      ['0x80248007', 'WU_E_DS_NODATA', 'Requested information is not in the data store.', ['reset']],
+      ['0x80248008', 'WU_E_DS_MISSINGDATA', 'Data store is missing required information or has an unexpected NULL.', ['reset']],
+      ['0x80248009', 'WU_E_DS_MISSINGREF', 'Data store has a reference to missing data.', ['reset']],
+      ['0x8024800A', 'WU_E_DS_UNKNOWNHANDLER', 'Update handler not recognised; update not processed.', ['reset']],
+      ['0x8024800B', 'WU_E_DS_CANTDELETE', 'Update still referenced by a service; not deleted.', ['info']],
+      ['0x8024800C', 'WU_E_DS_LOCKTIMEOUTEXPIRED', 'Data store section could not be locked in time.', ['services', 'reset']],
+      ['0x8024800D', 'WU_E_DS_NOCATEGORIES', 'Category has no parent and is not top-level.', ['reset']],
+      ['0x8024800E', 'WU_E_DS_ROWEXISTS', 'A row with the same primary key exists.', ['reset']],
+      ['0x8024800F', 'WU_E_DS_STOREFILELOCKED', 'Data store locked by another process.', ['services', 'reset']],
+      ['0x80248010', 'WU_E_DS_CANNOTREGISTER', 'Data store cannot register with COM in this process.', ['services', 'repair']],
+      ['0x80248011', 'WU_E_DS_UNABLETOSTART', 'Could not create a data store object in another process.', ['services', 'reset']],
+      ['0x80248013', 'WU_E_DS_DUPLICATEUPDATEID', 'Server sent the same update with two revision IDs.', ['reset']],
+      ['0x80248014', 'WU_E_DS_UNKNOWNSERVICE', 'The service is not in the data store.', ['reset']],
+      ['0x80248015', 'WU_E_DS_SERVICEEXPIRED', 'The service registration has expired.', ['reset']],
+      ['0x80248016', 'WU_E_DS_DECLINENOTALLOWED', 'A mandatory or deadline update cannot be hidden.', ['info']],
+      ['0x80248017', 'WU_E_DS_TABLESESSIONMISMATCH', 'Table not closed; not associated with the session.', ['reset']],
+      ['0x80248018', 'WU_E_DS_SESSIONLOCKMISMATCH', 'Table not closed; not associated with the session lock.', ['reset']],
+      ['0x80248019', 'WU_E_DS_NEEDWINDOWSSERVICE', 'The built-in Windows Update service cannot be removed.', ['info']],
+      ['0x8024801A', 'WU_E_DS_INVALIDOPERATION', 'The requested operation is not allowed.', ['info']],
+      ['0x8024801B', 'WU_E_DS_SCHEMAMISMATCH', 'Data store schema does not match a backup table schema.', ['reset']],
+      ['0x8024801C', 'WU_E_DS_RESETREQUIRED', 'The data store needs a session reset.', ['services', 'reset']],
+      ['0x8024801D', 'WU_E_DS_IMPERSONATED', 'Operation requested with an impersonated identity.', ['info']],
+      ['0x80248FFF', 'WU_E_DS_UNEXPECTED', 'Data store error not covered by a more specific code.', ['reset']]
+    ]},
+    { id: 'drv', name: 'Driver Util', rows: [
+      ['0x8024C001', 'WU_E_DRV_PRUNED', 'A driver was skipped (not fatal).', ['info']],
+      ['0x8024C002', 'WU_E_DRV_NOPROP_OR_LEGACY', 'A driver property could not be found.', ['info']],
+      ['0x8024C003', 'WU_E_DRV_REG_MISMATCH', 'Driver registry value has an unexpected type.', ['info']],
+      ['0x8024C004', 'WU_E_DRV_NO_METADATA', 'Driver update is missing metadata.', ['reset']],
+      ['0x8024C005', 'WU_E_DRV_MISSING_ATTRIBUTE', 'Driver update is missing a required attribute.', ['reset']],
+      ['0x8024C006', 'WU_E_DRV_SYNC_FAILED', 'Driver synchronisation failed.', ['reset', 'network']],
+      ['0x8024C007', 'WU_E_DRV_NO_PRINTER_CONTENT', 'Printer synchronisation information is missing.', ['info']],
+      ['0x8024CFFF', 'WU_E_DRV_UNEXPECTED', 'Driver error not covered by a more specific code.', ['reset']]
+    ]},
+    { id: 'wu', name: 'Windows Update (general)', rows: [
+      ['0x80070020', 'InstallFileLocked', 'A file is in use, often by antivirus or backup software scanning it.', ['reboot', 'reset']],
+      ['0x80070422', '', 'The Windows Update service is stopped or disabled.', ['services']],
+      ['0x80240001', 'WU_E_NO_SERVICE', 'Windows Update Agent could not provide the service.', ['services', 'reset']],
+      ['0x80240002', 'WU_E_MAX_CAPACITY_REACHED', 'Service capacity was exceeded.', ['reset']],
+      ['0x80240003', 'WU_E_UNKNOWN_ID', 'An ID could not be found.', ['reset']],
+      ['0x80240004', 'WU_E_NOT_INITIALIZED', 'An object could not be initialised.', ['services', 'reset']],
+      ['0x80240005', 'WU_E_RANGEOVERLAP', 'Overlapping byte ranges were requested.', ['reset']],
+      ['0x80240006', 'WU_E_TOOMANYRANGES', 'Too many byte ranges were requested.', ['reset']],
+      ['0x80240007', 'WU_E_INVALIDINDEX', 'Invalid collection index.', ['reset']],
+      ['0x80240008', 'WU_E_ITEMNOTFOUND', 'The queried item key was not found.', ['reset']],
+      ['0x80240009', 'WU_E_OPERATIONINPROGRESS', 'A conflicting operation was already in progress.', ['info']],
+      ['0x8024000A', 'WU_E_COULDNOTCANCEL', 'The operation could not be cancelled.', ['info']],
+      ['0x8024000B', 'WU_E_CALL_CANCELLED', 'The operation was cancelled.', ['info']],
+      ['0x8024000C', 'WU_E_NOOP', 'No operation was needed.', ['info']],
+      ['0x8024000D', 'WU_E_XML_MISSINGDATA', 'Required data missing from the update XML.', ['reset']],
+      ['0x8024000E', 'WU_E_XML_INVALID', 'Invalid data in the update XML.', ['reset']],
+      ['0x8024000F', 'WU_E_CYCLE_DETECTED', 'Circular update relationships in the metadata.', ['reset']],
+      ['0x80240010', 'WU_E_TOO_DEEP_RELATION', 'Update relationships too deep to evaluate.', ['reset']],
+      ['0x80240011', 'WU_E_INVALID_RELATIONSHIP', 'Invalid update relationship detected.', ['reset']],
+      ['0x80240012', 'WU_E_REG_VALUE_INVALID', 'An invalid registry value was read.', ['policy', 'reset']],
+      ['0x80240013', 'WU_E_DUPLICATE_ITEM', 'Tried to add a duplicate item to a list.', ['reset']],
+      ['0x80240016', 'WU_E_INSTALL_NOT_ALLOWED', 'Another install is running or a mandatory restart is pending.', ['reboot']],
+      ['0x80240017', 'WU_E_NOT_APPLICABLE', 'No applicable updates.', ['info']],
+      ['0x80240018', 'WU_E_NO_USERTOKEN', 'A required user token is missing.', ['info']],
+      ['0x80240019', 'WU_E_EXCLUSIVE_INSTALL_CONFLICT', 'An exclusive update cannot install alongside others.', ['info']],
+      ['0x8024001A', 'WU_E_POLICY_NOT_SET', 'A policy value was not set.', ['policy']],
+      ['0x8024001B', 'WU_E_SELFUPDATE_IN_PROGRESS', 'Windows Update Agent is updating itself.', ['info']],
+      ['0x8024001D', 'WU_E_INVALID_UPDATE', 'An update contains invalid metadata.', ['reset']],
+      ['0x8024001E', 'WU_E_SERVICE_STOP', 'The service or system was shutting down.', ['services']],
+      ['0x8024001F', 'WU_E_NO_CONNECTION', 'No network connection.', ['network']],
+      ['0x80240020', 'WU_E_NO_INTERACTIVE_USER', 'No interactive user is signed in.', ['info']],
+      ['0x80240021', 'WU_E_TIME_OUT', 'The operation timed out.', ['network', 'services']],
+      ['0x80240022', 'WU_E_ALL_UPDATES_FAILED', 'The operation failed for every update.', ['reset', 'repair']],
+      ['0x80240023', 'WU_E_EULAS_DECLINED', 'All license terms were declined.', ['info']],
+      ['0x80240024', 'WU_E_NO_UPDATE', 'There are no updates.', ['info']],
+      ['0x80240025', 'WU_E_USER_ACCESS_DISABLED', 'Group Policy blocks access to Windows Update.', ['policy']],
+      ['0x80240026', 'WU_E_INVALID_UPDATE_TYPE', 'Invalid update type.', ['reset']],
+      ['0x80240027', 'WU_E_URL_TOO_LONG', 'A URL exceeded the maximum length.', ['policy']],
+      ['0x80240028', 'WU_E_UNINSTALL_NOT_ALLOWED', 'Uninstall refused because the request did not come from WSUS.', ['info']],
+      ['0x80240029', 'WU_E_INVALID_PRODUCT_LICENSE', 'An unlicensed application may have caused missed updates.', ['info']],
+      ['0x8024002A', 'WU_E_MISSING_HANDLER', 'A component needed to detect updates is missing.', ['repair']],
+      ['0x8024002B', 'WU_E_LEGACYSERVER', 'The operation needs a newer server version.', ['policy']],
+      ['0x8024002C', 'WU_E_BIN_SOURCE_ABSENT', 'Delta update needs its source files, which are missing.', ['reset']],
+      ['0x8024002D', 'WU_E_SOURCE_ABSENT', 'Full-file update needs its source, which is missing.', ['reset', 'repair']],
+      ['0x8024002E', 'WU_E_WU_DISABLED', 'Access to an unmanaged server is not allowed.', ['policy']],
+      ['0x8024002F', 'WU_E_CALL_CANCELLED_BY_POLICY', 'Cancelled by the DisableWindowsUpdateAccess policy.', ['policy']],
+      ['0x80240030', 'WU_E_INVALID_PROXY_SERVER', 'The proxy list format is invalid.', ['network']],
+      ['0x80240031', 'WU_E_INVALID_FILE', 'A file is in the wrong format.', ['reset']],
+      ['0x80240032', 'WU_E_INVALID_CRITERIA', 'Invalid search criteria string.', ['info']],
+      ['0x80240033', 'WU_E_EULA_UNAVAILABLE', 'License terms could not be downloaded.', ['network']],
+      ['0x80240034', 'WU_E_DOWNLOAD_FAILED', 'The update failed to download.', ['bits', 'reset', 'network']],
+      ['0x80240035', 'WU_E_UPDATE_NOT_PROCESSED', 'The update was not processed.', ['reset']],
+      ['0x80240036', 'WU_E_INVALID_OPERATION', 'The object state did not allow the operation.', ['info']],
+      ['0x80240037', 'WU_E_NOT_SUPPORTED', 'The operation is not supported.', ['info']],
+      ['0x80240038', 'WU_E_WINHTTP_INVALID_FILE', 'Downloaded file had an unexpected content type (often a proxy page).', ['network', 'reset']],
+      ['0x80240039', 'WU_E_TOO_MANY_RESYNC', 'Server asked the agent to resync too many times.', ['reset']],
+      ['0x80240040', 'WU_E_NO_SERVER_CORE_SUPPORT', 'API method not available on Server Core.', ['info']],
+      ['0x80240041', 'WU_E_SYSPREP_IN_PROGRESS', 'Service unavailable while sysprep runs.', ['info']],
+      ['0x80240042', 'WU_E_UNKNOWN_SERVICE', 'Update service is no longer registered with Automatic Updates.', ['services', 'reset']],
+      ['0x80240043', 'WU_E_NO_UI_SUPPORT', 'No support for the Windows Update UI.', ['info']],
+      ['0x80240FFF', 'WU_E_UNEXPECTED', 'Failure not covered by another error code.', ['reset', 'repair']]
+    ]},
+    { id: 'success', name: 'Success codes', rows: [
+      ['0x00240001', 'WU_S_SERVICE_STOP', 'Windows Update Agent stopped successfully.', ['info']],
+      ['0x00240002', 'WU_S_SELFUPDATE', 'Windows Update Agent updated itself.', ['info']],
+      ['0x00240003', 'WU_S_UPDATE_ERROR', 'Completed, but some updates had errors.', ['reset']],
+      ['0x00240004', 'WU_S_MARKED_FOR_DISCONNECT', 'A callback was marked to disconnect later.', ['info']],
+      ['0x00240005', 'WU_S_REBOOT_REQUIRED', 'A restart is needed to finish installing.', ['reboot']],
+      ['0x00240006', 'WU_S_ALREADY_INSTALLED', 'The update is already installed.', ['info']],
+      ['0x00240007', 'WU_S_ALREADY_UNINSTALLED', 'The update to remove is not installed.', ['info']],
+      ['0x00240008', 'WU_S_ALREADY_DOWNLOADED', 'The update was already downloaded.', ['info']]
+    ]},
+    { id: 'msi', name: 'Windows Installer (minor)', rows: [
+      ['0x80241001', 'WU_E_MSI_WRONG_VERSION', 'Windows Installer is older than 3.1; updates may be missed.', ['repair']],
+      ['0x80241002', 'WU_E_MSI_NOT_CONFIGURED', 'Windows Installer is not configured; updates may be missed.', ['services']],
+      ['0x80241003', 'WU_E_MSP_DISABLED', 'Policy disables Windows Installer patching.', ['info']],
+      ['0x80241004', 'WU_E_MSI_WRONG_APP_CONTEXT', 'The application is installed per-user.', ['info']],
+      ['0x80241FFF', 'WU_E_MSP_UNEXPECTED', 'A Windows Installer failure may have caused missed updates.', ['services', 'repair']]
+    ]},
+    { id: 'setup', name: 'Windows Update Agent setup', rows: [
+      ['0x8024D001', 'WU_E_SETUP_INVALID_INFDATA', 'Agent update failed: an INF file is invalid.', ['repair']],
+      ['0x8024D002', 'WU_E_SETUP_INVALID_IDENTDATA', 'Agent update failed: wuident.cab is invalid.', ['reset']],
+      ['0x8024D003', 'WU_E_SETUP_ALREADY_INITIALIZED', 'Agent update failed: setup initialised twice.', ['reboot']],
+      ['0x8024D004', 'WU_E_SETUP_NOT_INITIALIZED', 'Agent update failed: setup never initialised.', ['reset', 'repair']],
+      ['0x8024D005', 'WU_E_SETUP_SOURCE_VERSION_MISMATCH', 'Agent update failed: INF and source file versions differ.', ['repair']],
+      ['0x8024D006', 'WU_E_SETUP_TARGET_VERSION_GREATER', 'Agent update failed: a target file is newer than the source.', ['info']],
+      ['0x8024D007', 'WU_E_SETUP_REGISTRATION_FAILED', 'Agent update failed: regsvr32 returned an error.', ['repair']],
+      ['0x8024D009', 'WU_E_SETUP_SKIP_UPDATE', 'Agent update skipped by a wuident.cab directive.', ['info']],
+      ['0x8024D00A', 'WU_E_SETUP_UNSUPPORTED_CONFIGURATION', 'Agent update failed: configuration not supported.', ['info']],
+      ['0x8024D00B', 'WU_E_SETUP_BLOCKED_CONFIGURATION', 'Agent update failed: the system blocks the update.', ['policy']],
+      ['0x8024D00C', 'WU_E_SETUP_REBOOT_TO_FIX', 'Agent update failed: a restart is required.', ['reboot']],
+      ['0x8024D00D', 'WU_E_SETUP_ALREADYRUNNING', 'Agent setup is already running.', ['info']],
+      ['0x8024D00E', 'WU_E_SETUP_REBOOTREQUIRED', 'Agent setup needs a restart to finish.', ['reboot']],
+      ['0x8024D00F', 'WU_E_SETUP_HANDLER_EXEC_FAILURE', 'Agent update failed: setup handler error.', ['repair']],
+      ['0x8024D010', 'WU_E_SETUP_INVALID_REGISTRY_DATA', 'Agent update failed: invalid registry data.', ['repair', 'policy']],
+      ['0x8024D013', 'WU_E_SETUP_WRONG_SERVER_VERSION', 'Agent update failed: server has no data for this version.', ['policy']],
+      ['0x8024DFFF', 'WU_E_SETUP_UNEXPECTED', 'Agent update failed for an unlisted reason.', ['repair']]
+    ]}
+  ];
+
+  // Flatten to a lookup. A code listed in two components (0x80243FFF) keeps its first entry.
+  const CODES = [];
+  const BY_CODE = Object.create(null);
+  for (const c of COMPONENTS) {
+    for (const [code, name, desc, playbooks] of c.rows) {
+      const key = code.toUpperCase().replace(/^0X/, '0x');
+      if (BY_CODE[key]) continue;
+      const entry = { code: key, name, desc, playbooks, component: c.name, componentId: c.id };
+      BY_CODE[key] = entry;
+      CODES.push(entry);
+    }
+  }
+
+  const api = { SOURCE_URL, COMPONENTS, CODES, BY_CODE };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.WU_DATA = api;
+})(typeof self !== 'undefined' ? self : this);
+</script>
+<script>
+/*
+ * Windows Update error -> Intune Remediation script generator.
+ * Pure functions, no dependencies. Works in the browser (window.WUGen) and in Node (require).
+ *
+ * The generated scripts are Windows PowerShell 5.1 compatible, ASCII only, and follow the
+ * Intune Remediations contract: detection is read-only and exits 1 when a fix is needed,
+ * remediation is idempotent, and each script writes one status line.
+ */
+(function (root) {
+  'use strict';
+
+  const PLAYBOOKS = {
+    policy: {
+      title: 'Clear blocking Windows Update policy',
+      summary: 'Removes leftover WSUS server settings and policies that block access to Windows Update, after exporting a .reg backup.',
+      risk: 'Group Policy re-applies these values if the GPO is still linked. Do not assign to devices that should scan WSUS or Configuration Manager.'
+    },
+    services: {
+      title: 'Repair update services',
+      summary: 'Re-enables and starts wuauserv, BITS, CryptSvc, UsoSvc, TrustedInstaller and msiserver when they are disabled or stopped.',
+      risk: 'Overrides any deliberate service hardening that disables these services.'
+    },
+    bits: {
+      title: 'Clear failed BITS jobs',
+      summary: 'Removes BITS jobs stuck in an error state for all users, then restarts BITS.',
+      risk: 'Only jobs already in Error or TransientError are removed.'
+    },
+    reset: {
+      title: 'Reset Windows Update components',
+      summary: 'Stops the update services, renames SoftwareDistribution (and optionally catroot2) to a dated backup, removes older backups and starts the services again.',
+      risk: 'The local update history list in Settings is cleared. Updates are downloaded again.'
+    },
+    network: {
+      title: 'Network and endpoint check',
+      summary: 'Flushes the DNS cache, optionally resets the WinHTTP proxy, and tests the Windows Update or WSUS endpoints. Results go into the status line.',
+      risk: 'Cannot fix firewall or proxy rules; it reports which endpoints fail so you can.'
+    },
+    repair: {
+      title: 'Repair the component store',
+      summary: 'Runs DISM /RestoreHealth and, optionally, sfc /scannow.',
+      risk: 'Can take 15-45 minutes. Intune stops a remediation after 60 minutes.'
+    },
+    reboot: {
+      title: 'Handle a pending restart',
+      summary: 'Detects a pending restart. If enabled, schedules one with a warning to the signed-in user.',
+      risk: 'With restart scheduling off, the remediation only reports the pending restart.'
+    },
+    info: {
+      title: 'Informational',
+      summary: 'This code describes a normal or transient state; no device-side fix is expected.',
+      risk: ''
+    }
+  };
+
+  const PLAYBOOK_ORDER = ['policy', 'services', 'bits', 'reset', 'network', 'repair', 'scan', 'reboot'];
+
+  const DEFAULTS = {
+    org: 'IntuneTools',
+    lookbackDays: 7,
+    triggerMode: 'either',          // 'error' | 'state' | 'either'
+    resetCatroot2: true,
+    resetWinHttpProxy: false,
+    policyRemoveWsus: true,
+    policyRemoveBlocks: true,
+    skipIfConfigMgr: true,
+    runSfc: true,
+    checkImageHealth: true,
+    scheduleRestart: false,
+    restartMinutes: 240,
+    triggerScan: true,
+    playbooks: null                  // null = derive from codes
+  };
+
+  function normalizeCode(input) {
+    if (input == null) return null;
+    let s = String(input).trim().toUpperCase().replace(/^0X/, '').replace(/^X/, '');
+    if (/^-\d+$/.test(String(input).trim())) {
+      // Decimal HRESULT such as -2147023838
+      const n = (Number(String(input).trim()) >>> 0).toString(16).toUpperCase();
+      s = n;
+    }
+    if (!/^[0-9A-F]{1,8}$/.test(s)) return null;
+    return '0x' + s.padStart(8, '0');
+  }
+
+  function playbooksFor(codes, data) {
+    const set = new Set();
+    for (const c of codes) {
+      const e = data.BY_CODE[c];
+      if (!e) continue;
+      for (const p of e.playbooks) set.add(p);
+    }
+    return PLAYBOOK_ORDER.concat(['info']).filter(p => set.has(p));
+  }
+
+  function resolve(codes, options, data) {
+    const opts = Object.assign({}, DEFAULTS, options || {});
+    const clean = [];
+    for (const c of codes || []) {
+      const n = normalizeCode(c);
+      if (n && !clean.includes(n)) clean.push(n);
+    }
+    if (!clean.length) throw new Error('Select at least one error code.');
+    opts.org = String(opts.org || DEFAULTS.org).replace(/[^A-Za-z0-9_-]/g, '') || DEFAULTS.org;
+    opts.lookbackDays = clampInt(opts.lookbackDays, 1, 90, DEFAULTS.lookbackDays);
+    opts.restartMinutes = clampInt(opts.restartMinutes, 5, 1440, DEFAULTS.restartMinutes);
+    if (!['error', 'state', 'either'].includes(opts.triggerMode)) opts.triggerMode = DEFAULTS.triggerMode;
+
+    let pbs = Array.isArray(opts.playbooks) ? opts.playbooks.slice() : playbooksFor(clean, data);
+    pbs = PLAYBOOK_ORDER.filter(p => p !== 'scan' && pbs.includes(p));
+    const id = clean.length === 1 ? clean[0] : clean[0] + '-plus' + (clean.length - 1);
+    return { codes: clean, opts, playbooks: pbs, id };
+  }
+
+  function clampInt(v, min, max, dflt) {
+    const n = parseInt(v, 10);
+    if (!Number.isFinite(n)) return dflt;
+    return Math.min(max, Math.max(min, n));
+  }
+
+  function psStr(s) { return "'" + String(s).replace(/'/g, "''") + "'"; }
+  function psArr(a) { return '@(' + a.map(psStr).join(', ') + ')'; }
+  function psBool(b) { return b ? '$true' : '$false'; }
+
+  function describeCodes(codes, data) {
+    return codes.map(c => {
+      const e = data.BY_CODE[c];
+      return '#   ' + c + (e ? '  ' + (e.name || '(no symbolic name)') + ' - ' + e.desc : '  (not in the Microsoft reference)');
+    }).join('\n');
+  }
+
+  function header(kind, r, data, generatedOn) {
+    const pbNames = r.playbooks.length ? r.playbooks.map(p => PLAYBOOKS[p].title).join('; ') : 'none (informational codes only)';
+    return [
+      '<#',
+      '.SYNOPSIS',
+      '    Intune Remediation ' + kind + ' script for Windows Update error(s): ' + r.codes.join(', '),
+      '.DESCRIPTION',
+      '    Generated by the Windows Update Error Remediation Builder (intune-tools) on ' + generatedOn + '.',
+      '    Error reference: ' + data.SOURCE_URL,
+      '    Fix playbooks: ' + pbNames,
+      '',
+      '    Intune settings: Run this script using the logged-on credentials = No (runs as SYSTEM),',
+      '    Enforce script signature check = No (unless you sign it), Run script in 64-bit PowerShell = Yes.',
+      '.NOTES',
+      '    Codes covered:',
+      describeCodes(r.codes, data).replace(/^#/gm, ''),
+      '#>',
+      ''
+    ].join('\n');
+  }
+
+  // ---------------------------------------------------------------- shared PowerShell blocks
+
+  function commonBlock(r) {
+    const o = r.opts;
+    return [
+      "$ErrorActionPreference = 'Stop'",
+      '$Codes        = ' + psArr(r.codes),
+      '$PackageId    = ' + psStr(r.id),
+      '$MarkerKey    = ' + psStr('HKLM:\\SOFTWARE\\' + o.org + '\\WUErrorRemediation\\' + r.id),
+      '$LogDir       = Join-Path $env:ProgramData ' + psStr(o.org + '\\Logs'),
+      '$WuPolicyKey  = ' + psStr('HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate'),
+      '$AuPolicyKey  = ' + psStr('HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU'),
+      '$WsusValues   = ' + (o.policyRemoveWsus ? "@(@{ K = $WuPolicyKey; N = 'WUServer' }, @{ K = $WuPolicyKey; N = 'WUStatusServer' }, @{ K = $WuPolicyKey; N = 'UpdateServiceUrlAlternate' }, @{ K = $AuPolicyKey; N = 'UseWUServer' })" : '@()'),
+      '$BlockValues  = ' + (o.policyRemoveBlocks ? "@(@{ K = $WuPolicyKey; N = 'DisableWindowsUpdateAccess' }, @{ K = $WuPolicyKey; N = 'DoNotConnectToWindowsUpdateInternetLocations' }, @{ K = $WuPolicyKey; N = 'SetDisableUXWUAccess' }, @{ K = $AuPolicyKey; N = 'NoAutoUpdate' })" : '@()'),
+      '$SkipIfConfigMgr = ' + psBool(o.skipIfConfigMgr),
+      '$UpdateServices = @(',
+      "    @{ Name = 'wuauserv';         StartType = 'Manual' },",
+      "    @{ Name = 'BITS';             StartType = 'Manual' },",
+      "    @{ Name = 'CryptSvc';         StartType = 'Automatic' },",
+      "    @{ Name = 'UsoSvc';           StartType = 'Automatic' },",
+      "    @{ Name = 'TrustedInstaller'; StartType = 'Manual' },",
+      "    @{ Name = 'msiserver';        StartType = 'Manual' }",
+      ')',
+      '',
+      'function Get-PolicyValue {',
+      '    param([string]$Key, [string]$Name)',
+      '    $item = Get-ItemProperty -Path $Key -Name $Name -ErrorAction SilentlyContinue',
+      '    if ($null -eq $item) { return $null }',
+      '    return $item.$Name',
+      '}',
+      '',
+      'function Test-ConfigMgrClient {',
+      "    return [bool](Get-Service -Name 'CcmExec' -ErrorAction SilentlyContinue)",
+      '}',
+      '',
+      'function Get-BlockingPolicy {',
+      '    $found = New-Object System.Collections.Generic.List[string]',
+      '    $pairs = @()',
+      '    if (-not ($SkipIfConfigMgr -and (Test-ConfigMgrClient))) { $pairs += $WsusValues }',
+      '    $pairs += $BlockValues',
+      '    foreach ($p in $pairs) {',
+      '        $v = Get-PolicyValue -Key $p.K -Name $p.N',
+      "        if ($null -ne $v -and ([string]$v) -ne '' -and ([string]$v) -ne '0') { $found.Add($p.N + '=' + $v) }",
+      '    }',
+      '    return ,$found',
+      '}',
+      '',
+      'function Test-PendingReboot {',
+      '    $reasons = New-Object System.Collections.Generic.List[string]',
+      "    if (Test-Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Component Based Servicing\\RebootPending') { $reasons.Add('CBS') }",
+      "    if (Test-Path 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WindowsUpdate\\Auto Update\\RebootRequired') { $reasons.Add('WindowsUpdate') }",
+      '    return ,$reasons',
+      '}',
+      '',
+      'function Get-ServiceProblems {',
+      '    $problems = New-Object System.Collections.Generic.List[string]',
+      '    foreach ($s in $UpdateServices) {',
+      '        $svc = Get-Service -Name $s.Name -ErrorAction SilentlyContinue',
+      '        if ($null -eq $svc) { continue }',
+      "        if ($svc.StartType -eq 'Disabled') { $problems.Add($s.Name + ' disabled') }",
+      '    }',
+      '    return ,$problems',
+      '}',
+      ''
+    ].join('\n');
+  }
+
+  // ---------------------------------------------------------------- detection
+
+  function detectionScript(codes, options, data, generatedOn) {
+    const r = resolve(codes, options, data);
+    const o = r.opts;
+    const pb = new Set(r.playbooks);
+    const date = generatedOn || new Date().toISOString().slice(0, 10);
+
+    const stateChecks = [];
+    if (pb.has('services')) stateChecks.push(
+      '    foreach ($p in (Get-ServiceProblems)) { $state.Add($p) }');
+    if (pb.has('policy')) stateChecks.push(
+      "    foreach ($p in (Get-BlockingPolicy)) { $state.Add('policy ' + $p) }");
+    if (pb.has('reboot')) stateChecks.push(
+      '    $pending = Test-PendingReboot',
+      "    if ($pending.Count -gt 0) { $state.Add('restart pending (' + ($pending -join '+') + ')') }");
+    if (pb.has('repair') && o.checkImageHealth) stateChecks.push(
+      '    try {',
+      '        $img = Repair-WindowsImage -Online -CheckHealth -ErrorAction Stop',
+      "        if ([string]$img.ImageHealthState -ne 'Healthy') { $state.Add('image ' + $img.ImageHealthState) }",
+      "    } catch { $notes.Add('image check skipped') }");
+
+    const lines = [
+      header('detection', r, data, date),
+      commonBlock(r),
+      '$LookbackDays = ' + o.lookbackDays,
+      '$TriggerMode  = ' + psStr(o.triggerMode) + "   # 'error' = only recent occurrences, 'state' = only device state, 'either'",
+      '',
+      'function Get-Since {',
+      '    $since = (Get-Date).ToUniversalTime().AddDays(-$LookbackDays)',
+      "    $last = Get-PolicyValue -Key $MarkerKey -Name 'LastRemediatedUtc'",
+      '    if ($last) {',
+      '        $parsed = [datetime]::MinValue',
+      "        if ([datetime]::TryParse($last, [Globalization.CultureInfo]::InvariantCulture, [Globalization.DateTimeStyles]::AdjustToUniversal -bor [Globalization.DateTimeStyles]::AssumeUniversal, [ref]$parsed)) {",
+      '            if ($parsed -gt $since) { $since = $parsed }',
+      '        }',
+      '    }',
+      '    return $since',
+      '}',
+      '',
+      'function Get-ErrorOccurrences {',
+      '    param([datetime]$SinceUtc)',
+      '    $hits = @{}',
+      '    foreach ($c in $Codes) { $hits[$c] = 0 }',
+      '',
+      '    # 1. Windows Update Agent history (install, uninstall and scan results with an HRESULT)',
+      '    try {',
+      '        $session  = New-Object -ComObject Microsoft.Update.Session',
+      '        $searcher = $session.CreateUpdateSearcher()',
+      '        $total    = $searcher.GetTotalHistoryCount()',
+      '        if ($total -gt 0) {',
+      '            foreach ($h in $searcher.QueryHistory(0, [Math]::Min($total, 300))) {',
+      '                if ($h.Date -lt $SinceUtc) { continue }',
+      "                foreach ($val in @($h.HResult, $h.UnmappedResultCode)) {",
+      "                    $hex = '0x{0:X8}' -f [int]$val",
+      '                    if ($hits.ContainsKey($hex)) { $hits[$hex]++ }',
+      '                }',
+      '            }',
+      '        }',
+      '    } catch { $notes.Add(\'history unavailable\') }',
+      '',
+      '    # 2. WindowsUpdateClient operational log (errors and warnings)',
+      '    try {',
+      "        $filter = @{ LogName = 'Microsoft-Windows-WindowsUpdateClient/Operational'; StartTime = $SinceUtc.ToLocalTime(); Level = 2, 3 }",
+      '        $events = Get-WinEvent -FilterHashtable $filter -ErrorAction Stop',
+      '        foreach ($e in $events) {',
+      '            $msg = [string]$e.Message',
+      '            foreach ($c in $Codes) {',
+      '                if ($msg.IndexOf($c, [StringComparison]::OrdinalIgnoreCase) -ge 0) { $hits[$c]++ }',
+      '            }',
+      '        }',
+      '    } catch {',
+      "        if ($_.FullyQualifiedErrorId -notmatch 'NoMatchingEventsFound') { $notes.Add('event log unavailable') }",
+      '    }',
+      '    return $hits',
+      '}',
+      '',
+      '$notes = New-Object System.Collections.Generic.List[string]',
+      '$state = New-Object System.Collections.Generic.List[string]',
+      'try {',
+      '    $since = Get-Since',
+      '    $hits  = Get-ErrorOccurrences -SinceUtc $since',
+      "    $seen  = @($Codes | Where-Object { $hits[$_] -gt 0 } | ForEach-Object { $_ + ' x' + $hits[$_] })",
+      '',
+      stateChecks.length ? '    # Device state that causes these errors' : '    # No state checks apply to the selected codes',
+      ...stateChecks,
+      '',
+      "    $errorTrigger = ($seen.Count -gt 0) -and ($TriggerMode -ne 'state')",
+      "    $stateTrigger = ($state.Count -gt 0) -and ($TriggerMode -ne 'error')",
+      "    $sinceText = $since.ToString('yyyy-MM-dd HH:mm') + 'Z'",
+      '',
+      '    $parts = New-Object System.Collections.Generic.List[string]',
+      "    if ($seen.Count -gt 0) { $parts.Add('seen ' + ($seen -join ', ') + ' since ' + $sinceText) }",
+      "    if ($state.Count -gt 0) { $parts.Add('state: ' + ($state -join ', ')) }",
+      "    if ($notes.Count -gt 0) { $parts.Add('notes: ' + ($notes -join ', ')) }",
+      '',
+      '    if ($errorTrigger -or $stateTrigger) {',
+      "        $line = 'NonCompliant [' + $PackageId + ']: ' + ($parts -join '; ')",
+      "        if ($line.Length -gt 2000) { $line = $line.Substring(0, 2000) }",
+      '        Write-Output $line',
+      '        exit 1',
+      '    }',
+      "    $line = 'Compliant [' + $PackageId + ']: none of ' + ($Codes -join ', ') + ' since ' + $sinceText",
+      "    if ($parts.Count -gt 0) { $line += '; ' + ($parts -join '; ') }",
+      "    if ($line.Length -gt 2000) { $line = $line.Substring(0, 2000) }",
+      '    Write-Output $line',
+      '    exit 0',
+      '} catch {',
+      "    Write-Output ('DetectionError [' + $PackageId + ']: ' + $_.Exception.Message)",
+      '    exit 1',
+      '}',
+      ''
+    ];
+    return lines.join('\n');
+  }
+
+  // ---------------------------------------------------------------- remediation
+
+  function remediationScript(codes, options, data, generatedOn) {
+    const r = resolve(codes, options, data);
+    const o = r.opts;
+    const pb = new Set(r.playbooks);
+    const date = generatedOn || new Date().toISOString().slice(0, 10);
+    const steps = [];
+
+    if (pb.has('policy')) steps.push([
+      "Invoke-Step 'policy' {",
+      '    $removed = New-Object System.Collections.Generic.List[string]',
+      '    $pairs = @()',
+      '    if ($SkipIfConfigMgr -and (Test-ConfigMgrClient)) {',
+      "        Write-Log 'Configuration Manager client found; WSUS server values left in place'",
+      '    } else { $pairs += $WsusValues }',
+      '    $pairs += $BlockValues',
+      '    $present = @($pairs | Where-Object { $null -ne (Get-PolicyValue -Key $_.K -Name $_.N) })',
+      "    if ($present.Count -eq 0) { return 'nothing to remove' }",
+      "    $backup = Join-Path $LogDir ('WUPolicy-backup-' + (Get-Date -Format 'yyyyMMddHHmmss') + '.reg')",
+      "    & reg.exe export 'HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate' $backup /y | Out-Null",
+      '    foreach ($p in $present) {',
+      '        Remove-ItemProperty -Path $p.K -Name $p.N -Force',
+      '        $removed.Add($p.N)',
+      "        Write-Log ('Removed ' + $p.K + '\\' + $p.N)",
+      '    }',
+      "    Restart-Service -Name 'wuauserv' -Force -ErrorAction SilentlyContinue",
+      "    return 'removed ' + ($removed -join ',') + ' (backup ' + (Split-Path $backup -Leaf) + ')'",
+      '}'
+    ].join('\n'));
+
+    if (pb.has('services')) steps.push([
+      "Invoke-Step 'services' {",
+      '    $changed = New-Object System.Collections.Generic.List[string]',
+      '    foreach ($s in $UpdateServices) {',
+      '        $svc = Get-Service -Name $s.Name -ErrorAction SilentlyContinue',
+      "        if ($null -eq $svc) { Write-Log ('Service not present: ' + $s.Name); continue }",
+      "        if ($svc.StartType -eq 'Disabled') {",
+      '            Set-Service -Name $s.Name -StartupType $s.StartType',
+      "            $changed.Add($s.Name + '->' + $s.StartType)",
+      "            Write-Log ('Set ' + $s.Name + ' start type to ' + $s.StartType)",
+      '        }',
+      '    }',
+      "    foreach ($n in @('CryptSvc', 'BITS', 'wuauserv')) { Start-ServiceSafe $n }",
+      "    if ($changed.Count -eq 0) { return 'services enabled; started' }",
+      "    return 'enabled ' + ($changed -join ',') + '; started'",
+      '}'
+    ].join('\n'));
+
+    if (pb.has('bits')) steps.push([
+      "Invoke-Step 'bits' {",
+      '    Import-Module BitsTransfer -ErrorAction Stop',
+      "    $bad = @(Get-BitsTransfer -AllUsers -ErrorAction SilentlyContinue | Where-Object { $_.JobState -in @('Error', 'TransientError') })",
+      '    foreach ($j in $bad) {',
+      "        Write-Log ('Removing BITS job ' + $j.DisplayName + ' (' + $j.JobState + ')')",
+      '        $j | Remove-BitsTransfer -ErrorAction SilentlyContinue',
+      '    }',
+      "    Restart-Service -Name 'BITS' -Force -ErrorAction SilentlyContinue",
+      "    return 'removed ' + $bad.Count + ' failed job(s)'",
+      '}'
+    ].join('\n'));
+
+    if (pb.has('reset')) steps.push([
+      "Invoke-Step 'reset' {",
+      "    $svcNames = @('wuauserv', 'UsoSvc', 'BITS', 'CryptSvc')",
+      '    foreach ($n in $svcNames) { Stop-ServiceSafe $n }',
+      "    $stamp = Get-Date -Format 'yyyyMMddHHmmss'",
+      "    $targets = @(Join-Path $env:SystemRoot 'SoftwareDistribution')",
+      o.resetCatroot2 ? "    $targets += (Join-Path $env:SystemRoot 'System32\\catroot2')" : '    # catroot2 reset disabled in the builder options',
+      '    $done = New-Object System.Collections.Generic.List[string]',
+      '    try {',
+      '        foreach ($t in $targets) {',
+      '            $parent = Split-Path $t -Parent',
+      '            $leaf   = Split-Path $t -Leaf',
+      "            Get-ChildItem -Path $parent -Directory -Filter ($leaf + '.bak-*') -ErrorAction SilentlyContinue |",
+      '                Remove-Item -Recurse -Force -ErrorAction SilentlyContinue',
+      '            if (Test-Path $t) {',
+      "                $newName = $leaf + '.bak-' + $stamp",
+      '                try { Rename-Item -Path $t -NewName $newName -Force }',
+      '                catch { Start-Sleep -Seconds 5; Rename-Item -Path $t -NewName $newName -Force }',
+      '                $done.Add($leaf)',
+      "                Write-Log ('Renamed ' + $t + ' to ' + $newName)",
+      '            }',
+      '        }',
+      '    } finally {',
+      "        foreach ($n in @('CryptSvc', 'BITS', 'wuauserv', 'UsoSvc')) { Start-ServiceSafe $n }",
+      '    }',
+      "    return 'renamed ' + ($done -join ',')",
+      '}'
+    ].join('\n'));
+
+    if (pb.has('network')) steps.push([
+      "Invoke-Step 'network' {",
+      '    Clear-DnsClientCache -ErrorAction SilentlyContinue',
+      o.resetWinHttpProxy
+        ? "    & netsh.exe winhttp reset proxy | Out-Null\n    Write-Log 'WinHTTP proxy reset to direct'"
+        : '    # WinHTTP proxy left unchanged (enable the option in the builder to reset it)',
+      "    $targets = @(@('sls.update.microsoft.com', 443), @('fe3cr.delivery.mp.microsoft.com', 443), @('dl.delivery.mp.microsoft.com', 443), @('download.windowsupdate.com', 80))",
+      "    $wsus = Get-PolicyValue -Key $WuPolicyKey -Name 'WUServer'",
+      "    $useWsus = Get-PolicyValue -Key $AuPolicyKey -Name 'UseWUServer'",
+      "    if ($wsus -and ([string]$useWsus) -eq '1') {",
+      '        try {',
+      '            $u = [Uri]$wsus',
+      '            $targets = @(@($u.Host, $u.Port))',
+      '        } catch { }',
+      '    }',
+      '    $failed = New-Object System.Collections.Generic.List[string]',
+      '    foreach ($t in $targets) {',
+      '        $client = New-Object System.Net.Sockets.TcpClient',
+      '        try {',
+      '            $ar = $client.BeginConnect($t[0], [int]$t[1], $null, $null)',
+      '            $ok = $ar.AsyncWaitHandle.WaitOne(4000) -and $client.Connected',
+      "            if (-not $ok) { $failed.Add($t[0] + ':' + $t[1]) }",
+      "        } catch { $failed.Add($t[0] + ':' + $t[1]) } finally { $client.Close() }",
+      '    }',
+      "    Restart-Service -Name 'wuauserv' -Force -ErrorAction SilentlyContinue",
+      "    if ($failed.Count -gt 0) { $script:Warnings.Add('unreachable ' + ($failed -join ',')); return 'unreachable ' + ($failed -join ',') }",
+      "    return 'endpoints reachable'",
+      '}'
+    ].join('\n'));
+
+    if (pb.has('repair')) steps.push([
+      "Invoke-Step 'repair' {",
+      "    $dism = Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\\dism.exe') -ArgumentList '/Online', '/Cleanup-Image', '/RestoreHealth', '/NoRestart' -Wait -PassThru -WindowStyle Hidden",
+      "    Write-Log ('DISM exit code ' + $dism.ExitCode)",
+      "    if ($dism.ExitCode -ne 0 -and $dism.ExitCode -ne 3010) { throw ('DISM RestoreHealth failed with exit code ' + $dism.ExitCode) }",
+      "    $result = 'DISM ' + $dism.ExitCode",
+      o.runSfc ? [
+        "    $sfc = Start-Process -FilePath (Join-Path $env:SystemRoot 'System32\\sfc.exe') -ArgumentList '/scannow' -Wait -PassThru -WindowStyle Hidden",
+        "    Write-Log ('SFC exit code ' + $sfc.ExitCode)",
+        "    $result += ', SFC ' + $sfc.ExitCode"
+      ].join('\n') : '    # sfc /scannow disabled in the builder options',
+      '    return $result',
+      '}'
+    ].join('\n'));
+
+    if (o.triggerScan) steps.push([
+      "Invoke-Step 'scan' {",
+      "    $uso = Join-Path $env:SystemRoot 'System32\\UsoClient.exe'",
+      '    if (Test-Path $uso) {',
+      "        Start-Process -FilePath $uso -ArgumentList 'StartScan' -WindowStyle Hidden",
+      "        return 'scan started (UsoClient)'",
+      '    }',
+      '    (New-Object -ComObject Microsoft.Update.AutoUpdate).DetectNow()',
+      "    return 'scan started (DetectNow)'",
+      '}'
+    ].join('\n'));
+
+    if (pb.has('reboot')) steps.push([
+      "Invoke-Step 'reboot' {",
+      '    $pending = Test-PendingReboot',
+      "    if ($pending.Count -eq 0) { return 'no restart pending' }",
+      o.scheduleRestart ? [
+        '    $seconds = ' + (o.restartMinutes * 60),
+        "    $msg = 'Your IT team has scheduled a restart in " + o.restartMinutes + " minutes to finish installing Windows updates. Please save your work.'",
+        "    & shutdown.exe /r /t $seconds /c $msg /d p:2:17 2>$null",
+        "    if ($LASTEXITCODE -eq 1190) { return 'restart already scheduled' }",
+        "    return 'restart scheduled in " + o.restartMinutes + " min (' + ($pending -join '+') + ')'"
+      ].join('\n') : [
+        "    $script:Warnings.Add('restart pending')",
+        "    return 'restart pending (' + ($pending -join '+') + '); scheduling is off'"
+      ].join('\n'),
+      '}'
+    ].join('\n'));
+
+    const lines = [
+      header('remediation', r, data, date),
+      commonBlock(r),
+      '$LogFile  = Join-Path $LogDir (\'WUErrorRemediation-\' + $PackageId + \'.log\')',
+      '$Results  = New-Object System.Collections.Generic.List[string]',
+      '$Warnings = New-Object System.Collections.Generic.List[string]',
+      '$Failed   = $false',
+      '',
+      'function Write-Log {',
+      '    param([string]$Message)',
+      '    try {',
+      '        if (-not (Test-Path $LogDir)) { New-Item -Path $LogDir -ItemType Directory -Force | Out-Null }',
+      "        $stampText = (Get-Date).ToString('yyyy-MM-dd HH:mm:ss')",
+      "        Add-Content -Path $LogFile -Value ($stampText + '  ' + $Message) -Encoding UTF8",
+      '    } catch { }',
+      '}',
+      '',
+      'function Invoke-Step {',
+      '    param([string]$Name, [scriptblock]$Action)',
+      "    Write-Log ('--- ' + $Name)",
+      '    try {',
+      '        $out = & $Action',
+      "        $script:Results.Add($Name + ': ' + (@($out) -join ' '))",
+      "        Write-Log ($Name + ' OK: ' + (@($out) -join ' '))",
+      '    } catch {',
+      '        $script:Failed = $true',
+      "        $script:Results.Add($Name + ': FAILED ' + $_.Exception.Message)",
+      "        Write-Log ($Name + ' FAILED: ' + $_.Exception.Message)",
+      '    }',
+      '}',
+      '',
+      'function Stop-ServiceSafe {',
+      '    param([string]$Name)',
+      '    $svc = Get-Service -Name $Name -ErrorAction SilentlyContinue',
+      "    if ($null -eq $svc -or $svc.Status -eq 'Stopped') { return }",
+      '    try {',
+      '        Stop-Service -Name $Name -Force -ErrorAction Stop',
+      "        $svc.WaitForStatus('Stopped', [TimeSpan]::FromSeconds(30))",
+      "    } catch { Write-Log ('Could not stop ' + $Name + ': ' + $_.Exception.Message) }",
+      '}',
+      '',
+      'function Start-ServiceSafe {',
+      '    param([string]$Name)',
+      '    $svc = Get-Service -Name $Name -ErrorAction SilentlyContinue',
+      "    if ($null -eq $svc -or $svc.StartType -eq 'Disabled' -or $svc.Status -eq 'Running') { return }",
+      "    try { Start-Service -Name $Name -ErrorAction Stop } catch { Write-Log ('Could not start ' + $Name + ': ' + $_.Exception.Message) }",
+      '}',
+      '',
+      "Write-Log ('===== Remediation start for ' + ($Codes -join ', '))",
+      '',
+      r.playbooks.length || o.triggerScan ? '' : "Write-Log 'Informational codes only; nothing to change'",
+      steps.join('\n\n'),
+      '',
+      '# Record the run so detection only counts errors that happen after this fix.',
+      'if (-not $Failed) {',
+      '    try {',
+      '        if (-not (Test-Path $MarkerKey)) { New-Item -Path $MarkerKey -Force | Out-Null }',
+      "        Set-ItemProperty -Path $MarkerKey -Name 'LastRemediatedUtc' -Value ((Get-Date).ToUniversalTime().ToString('o'))",
+      "        Set-ItemProperty -Path $MarkerKey -Name 'Codes' -Value ($Codes -join ',')",
+      "    } catch { Write-Log ('Could not write marker: ' + $_.Exception.Message) }",
+      '}',
+      '',
+      "$status = 'Remediated'",
+      "if ($Failed) { $status = 'RemediationFailed' } elseif ($Warnings.Count -gt 0) { $status = 'RemediatedWithWarnings' }",
+      "if ($Results.Count -eq 0) { $Results.Add('informational codes only; no change made') }",
+      "$line = $status + ' [' + $PackageId + ']: ' + ($Results -join '; ')",
+      "if ($line.Length -gt 2000) { $line = $line.Substring(0, 2000) }",
+      'Write-Log $line',
+      'Write-Output $line',
+      'if ($Failed) { exit 1 }',
+      'exit 0',
+      ''
+    ];
+    return lines.filter(l => l !== null).join('\n');
+  }
+
+  function fileNames(codes, options, data) {
+    const r = resolve(codes, options, data);
+    return {
+      detection: 'Detect-WUError-' + r.id + '.ps1',
+      remediation: 'Remediate-WUError-' + r.id + '.ps1',
+      id: r.id
+    };
+  }
+
+  function summarize(codes, options, data) {
+    const r = resolve(codes, options, data);
+    const unknown = r.codes.filter(c => !data.BY_CODE[c]);
+    const infoOnly = r.playbooks.length === 0;
+    return {
+      id: r.id,
+      codes: r.codes,
+      unknown,
+      infoOnly,
+      playbooks: r.playbooks.map(p => Object.assign({ id: p }, PLAYBOOKS[p])),
+      options: r.opts
+    };
+  }
+
+  const api = { PLAYBOOKS, PLAYBOOK_ORDER, DEFAULTS, normalizeCode, playbooksFor, resolve,
+    detectionScript, remediationScript, fileNames, summarize };
+  if (typeof module === 'object' && module.exports) module.exports = api;
+  else root.WUGen = api;
+})(typeof self !== 'undefined' ? self : this);
+</script>
+<script>
+(function () {
+  'use strict';
+  const D = window.WU_DATA, G = window.WUGen;
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const PB_LABEL = { policy: 'Policy', services: 'Services', bits: 'BITS', reset: 'Reset', network: 'Network', repair: 'DISM/SFC', reboot: 'Restart', info: 'Info' };
+
+  const state = { selected: [], playbooks: null, tab: 'detection', scripts: null };
+
+  $('srcLink').href = D.SOURCE_URL;
+  for (const c of D.COMPONENTS) $('comp').insertAdjacentHTML('beforeend', '<option value="' + c.id + '">' + esc(c.name) + '</option>');
+  for (const p of Object.keys(PB_LABEL)) $('pbFilter').insertAdjacentHTML('beforeend', '<option value="' + p + '">' + esc(G.PLAYBOOKS[p].title) + '</option>');
+
+  // ---------------------------------------------------------------- table
+  function matches(e, q, comp, pb) {
+    if (comp && e.componentId !== comp) return false;
+    if (pb && !e.playbooks.includes(pb)) return false;
+    if (!q) return true;
+    const n = G.normalizeCode(q);
+    if (n && e.code === n) return true;
+    const hay = (e.code + ' ' + e.name + ' ' + e.desc + ' ' + e.component).toLowerCase();
+    return q.toLowerCase().split(/\s+/).every(w => hay.includes(w.replace(/^0x/, '')) || hay.includes(w));
+  }
+
+  function renderRows() {
+    const q = $('q').value.trim(), comp = $('comp').value, pb = $('pbFilter').value;
+    const list = D.CODES.filter(e => matches(e, q, comp, pb));
+    $('rows').innerHTML = list.map(e => {
+      const sel = state.selected.includes(e.code);
+      const tags = e.playbooks.map(p => '<span class="tag ' + (p === 'info' ? 'info' : 'fix') + '">' + PB_LABEL[p] + '</span>').join('');
+      return '<tr data-code="' + e.code + '"' + (sel ? ' class="sel"' : '') + '>' +
+        '<td><input type="checkbox" tabindex="-1" aria-label="Select ' + e.code + '"' + (sel ? ' checked' : '') + '></td>' +
+        '<td class="code">' + e.code + '</td><td class="name">' + esc(e.name || '-') + '</td>' +
+        '<td>' + esc(e.desc) + '<div class="note" style="margin:0">' + esc(e.component) + '</div></td><td>' + tags + '</td></tr>';
+    }).join('') || '<tr><td colspan="5" class="note" style="padding:14px">No codes match.</td></tr>';
+    $('count').textContent = list.length + ' of ' + D.CODES.length + ' codes';
+    const n = G.normalizeCode(q);
+    const custom = n && !D.BY_CODE[n] && !state.selected.includes(n);
+    $('addCustom').hidden = !custom;
+    if (custom) $('customCode').textContent = n;
+  }
+
+  $('rows').addEventListener('click', ev => {
+    const tr = ev.target.closest('tr[data-code]');
+    if (!tr) return;
+    toggle(tr.dataset.code);
+  });
+  $('addCustom').addEventListener('click', () => { const n = G.normalizeCode($('q').value); if (n) toggle(n, true); });
+  $('q').addEventListener('keydown', ev => {
+    if (ev.key !== 'Enter') return;
+    const n = G.normalizeCode($('q').value.trim());
+    if (n) { if (!state.selected.includes(n)) toggle(n, true); $('q').select(); }
+  });
+  for (const id of ['q', 'comp', 'pbFilter']) $(id).addEventListener('input', renderRows);
+
+  function toggle(code, forceOn) {
+    const i = state.selected.indexOf(code);
+    if (i >= 0 && !forceOn) state.selected.splice(i, 1);
+    else if (i < 0) state.selected.push(code);
+    state.playbooks = null;           // re-derive the plan from the new selection
+    update();
+  }
+
+  function renderSelected() {
+    $('selected').innerHTML = state.selected.length ? state.selected.map(c =>
+      '<span class="chip' + (D.BY_CODE[c] ? '' : ' unknown') + '" title="' + esc(D.BY_CODE[c] ? D.BY_CODE[c].desc : 'Not in the Microsoft reference') + '">' + c +
+      '<button data-rm="' + c + '" aria-label="Remove ' + c + '">&times;</button></span>').join('')
+      : '<span class="note">Nothing selected yet. Click rows in the table, or type a code and press Enter.</span>';
+    $('selCount').textContent = state.selected.length ? '(' + state.selected.length + ')' : '';
+  }
+  $('selected').addEventListener('click', ev => { const b = ev.target.closest('[data-rm]'); if (b) toggle(b.dataset.rm); });
+  $('clearSel').addEventListener('click', () => { state.selected = []; state.playbooks = null; update(); });
+
+  // ---------------------------------------------------------------- plan
+  const OPT_DEFS = {
+    policy: [['policyRemoveWsus', 'Remove WSUS server values', 'check'], ['policyRemoveBlocks', 'Remove access-blocking values', 'check'], ['skipIfConfigMgr', 'Keep WSUS values on Configuration Manager clients', 'check']],
+    reset: [['resetCatroot2', 'Also reset catroot2', 'check']],
+    network: [['resetWinHttpProxy', 'Reset WinHTTP proxy to direct (breaks devices that need a machine proxy)', 'check']],
+    repair: [['runSfc', 'Run sfc /scannow after DISM', 'check'], ['checkImageHealth', 'Flag unhealthy image in detection', 'check']],
+    reboot: [['scheduleRestart', 'Schedule a restart', 'check'], ['restartMinutes', 'minutes warning', 'number']]
+  };
+  const opts = Object.assign({}, G.DEFAULTS);
+  delete opts.playbooks;
+
+  function derived() { return G.playbooksFor(state.selected, D).filter(p => p !== 'info'); }
+
+  function renderPlan() {
+    if (!state.selected.length) { $('plan').innerHTML = '<div class="empty">Select one or more error codes to see the fix plan.</div>'; return; }
+    const auto = derived();
+    const active = state.playbooks || auto;
+    const order = G.PLAYBOOK_ORDER.filter(p => p !== 'scan');
+    const shown = order.filter(p => auto.includes(p)).concat(order.filter(p => !auto.includes(p)));
+    let html = '';
+    if (!auto.length) html += '<div class="banner" style="margin:0 0 10px">The selected codes are informational; no device-side fix is mapped. The package will still report occurrences and, if enabled, start a fresh scan. You can switch on a playbook below if you want one.</div>';
+    for (const p of shown) {
+      const meta = G.PLAYBOOKS[p];
+      const on = active.includes(p);
+      const opt = (OPT_DEFS[p] || []).map(([k, label, kind]) => kind === 'number'
+        ? '<label><input type="number" min="5" max="1440" data-opt="' + k + '" value="' + esc(opts[k]) + '"' + (on ? '' : ' disabled') + '> ' + esc(label) + '</label>'
+        : '<label><input type="checkbox" data-opt="' + k + '"' + (opts[k] ? ' checked' : '') + (on ? '' : ' disabled') + '> ' + esc(label) + '</label>').join('');
+      html += '<div class="pb' + (on ? '' : ' off') + '"><label class="pb-head"><input type="checkbox" data-pb="' + p + '"' + (on ? ' checked' : '') + '> ' +
+        esc(meta.title) + (auto.includes(p) ? ' <small>suggested for your codes</small>' : ' <small>optional</small>') + '</label>' +
+        '<p>' + esc(meta.summary) + '</p>' + (meta.risk ? '<p class="risk">' + esc(meta.risk) + '</p>' : '') +
+        (opt ? '<div class="opts">' + opt + '</div>' : '') + '</div>';
+    }
+    html += '<div class="pb"><label class="pb-head"><input type="checkbox" data-opt="triggerScan"' + (opts.triggerScan ? ' checked' : '') + '> Start a Windows Update scan at the end</label>' +
+      '<p>Runs UsoClient StartScan (or the agent DetectNow method on older builds) so the device re-reports quickly.</p></div>';
+    $('plan').innerHTML = html;
+  }
+
+  $('plan').addEventListener('change', ev => {
+    const t = ev.target;
+    if (t.dataset.pb) {
+      const cur = new Set(state.playbooks || derived());
+      if (t.checked) cur.add(t.dataset.pb); else cur.delete(t.dataset.pb);
+      state.playbooks = G.PLAYBOOK_ORDER.filter(p => cur.has(p));
+    } else if (t.dataset.opt) {
+      opts[t.dataset.opt] = t.type === 'checkbox' ? t.checked : t.value;
+    }
+    update();
+  });
+  $('org').addEventListener('input', () => { opts.org = $('org').value; update(false); });
+  $('lookback').addEventListener('input', () => { opts.lookbackDays = $('lookback').value; update(false); });
+  $('trigger').addEventListener('change', () => { opts.triggerMode = $('trigger').value; update(false); });
+
+  // ---------------------------------------------------------------- output
+  function build() {
+    if (!state.selected.length) { state.scripts = null; return; }
+    const o = Object.assign({}, opts, { playbooks: state.playbooks || derived() });
+    const today = new Date().toISOString().slice(0, 10);
+    state.scripts = {
+      names: G.fileNames(state.selected, o, D),
+      detection: G.detectionScript(state.selected, o, D, today),
+      remediation: G.remediationScript(state.selected, o, D, today),
+      summary: G.summarize(state.selected, o, D)
+    };
+  }
+
+  function renderOut() {
+    const s = state.scripts;
+    $('outEmpty').hidden = !!s; $('out').hidden = !s;
+    if (!s) return;
+    document.querySelectorAll('.tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === state.tab)));
+    const isCode = state.tab !== 'intune';
+    $('codePane').hidden = !isCode; $('intunePane').hidden = isCode;
+    if (isCode) {
+      $('code').textContent = s[state.tab];
+      $('fname').textContent = s.names[state.tab] + '  -  ' + (new Blob([s[state.tab]]).size / 1024).toFixed(1) + ' KB';
+    } else {
+      $('intunePane').innerHTML = intuneHtml(s);
+    }
+  }
+
+  function intuneHtml(s) {
+    const name = 'WU error ' + s.summary.codes.join(', ');
+    const pbs = s.summary.playbooks.length ? s.summary.playbooks.map(p => '<li><b>' + esc(p.title) + '</b> - ' + esc(p.summary) + '</li>').join('') : '<li>Report only (informational codes).</li>';
+    const unknown = s.summary.unknown.length ? '<div class="banner">Not in Microsoft\'s reference: ' + s.summary.unknown.map(esc).join(', ') + '. Detection still searches for them; pick a fix playbook manually above.</div>' : '';
+    return unknown + '<ol class="steps">' +
+      '<li>In the Intune admin center go to <b>Devices &gt; Scripts and remediations &gt; Remediations &gt; Create</b>.</li>' +
+      '<li>Name it <code>' + esc(name.length > 120 ? name.slice(0, 117) + '...' : name) + '</code>.</li>' +
+      '<li>Upload <code>' + esc(s.names.detection) + '</code> as the detection script and <code>' + esc(s.names.remediation) + '</code> as the remediation script.</li>' +
+      '<li>Use these settings:<table class="kv" style="margin:6px 0"><tbody>' +
+      '<tr><td>Run this script using the logged-on credentials</td><td>No (runs as SYSTEM)</td></tr>' +
+      '<tr><td>Enforce script signature check</td><td>No, unless you sign the scripts</td></tr>' +
+      '<tr><td>Run script in 64-bit PowerShell</td><td>Yes</td></tr>' +
+      '<tr><td>Schedule</td><td>Daily is a good start; hourly only while piloting</td></tr></tbody></table></li>' +
+      '<li>Assign to a pilot group first, then review <b>Device status</b>: the pre- and post-remediation output columns show the status line from each script.</li>' +
+      '</ol><h2 style="margin-top:14px">What the remediation does</h2><ul>' + pbs + '</ul>' +
+      '<p class="note">Log: <code>%ProgramData%\\' + esc(s.summary.options.org) + '\\Logs\\WUErrorRemediation-' + esc(s.names.id) + '.log</code>. ' +
+      'After a successful run the remediation records the time under <code>HKLM\\SOFTWARE\\' + esc(s.summary.options.org) + '\\WUErrorRemediation\\' + esc(s.names.id) + '</code>, ' +
+      'so detection only counts errors that happen afterwards.</p>';
+  }
+
+  document.querySelectorAll('.tab').forEach(b => b.addEventListener('click', () => { state.tab = b.dataset.tab; renderOut(); }));
+
+  function download(name, text) {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+    const a = document.createElement('a'); a.href = url; a.download = name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+  }
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1600); }
+
+  $('copyBtn').addEventListener('click', async () => {
+    const text = state.scripts[state.tab];
+    try { await navigator.clipboard.writeText(text); toast('Copied'); }
+    catch (e) { const r = document.createRange(); r.selectNodeContents($('code')); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast('Press Ctrl+C to copy'); }
+  });
+  $('dlBtn').addEventListener('click', () => download(state.scripts.names[state.tab], state.scripts[state.tab]));
+  $('dlBoth').addEventListener('click', () => {
+    download(state.scripts.names.detection, state.scripts.detection);
+    setTimeout(() => download(state.scripts.names.remediation, state.scripts.remediation), 400);
+  });
+
+  // ---------------------------------------------------------------- state in the URL
+  function writeHash() {
+    const h = state.selected.length ? '#codes=' + state.selected.join(',') : ' ';
+    try { history.replaceState(null, '', h === ' ' ? location.pathname + location.search : h); } catch (e) { }
+  }
+  function readHash() {
+    const m = /codes=([^&]+)/.exec(location.hash || location.search);
+    if (!m) return;
+    for (const c of decodeURIComponent(m[1]).split(',')) { const n = G.normalizeCode(c); if (n && !state.selected.includes(n)) state.selected.push(n); }
+  }
+
+  function update(rerenderPlan) {
+    if (rerenderPlan !== false) { renderRows(); renderSelected(); renderPlan(); }
+    build(); renderOut(); writeHash();
+  }
+
+  readHash();
+  update();
+})();
+</script>
+</body>
+</html>
